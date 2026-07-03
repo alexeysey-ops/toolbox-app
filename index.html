@@ -203,7 +203,8 @@ function scrSections(mode){
     head(P.name, titles[mode] + ' · ' + subs[mode], mode === 'edit')
     + '<table><thead><tr><th>Section</th><th class="num">' + (mode === 'sitecheck' ? '' : 'Total') + '</th></tr></thead>'
     + '<tbody>' + rows + totalRow + '</tbody></table>'
-    + (mode === 'summary' ? '<div class="foot"><button class="pdfbtn">PDF</button><span></span></div>' : '')
+    + (mode === 'summary' ? '<div class="foot"><button class="pdfbtn">PDF</button><button class="pdfbtn anbtn">Analytics</button></div>'
+      : (mode === 'sitecheck' ? '<div class="foot"><span></span><button class="pdfbtn anbtn">Analytics</button></div>' : ''))
   );
   v.insertBefore(backBtn(scrMenu), v.firstChild);
   v.querySelectorAll('.rowlink').forEach(function (r) {
@@ -214,7 +215,8 @@ function scrSections(mode){
       else scrEdit(s);
     };
   });
-  var pdf = v.querySelector('.pdfbtn'); if (pdf) pdf.onclick = function () { pdfStub('summary'); };
+  var pdf = v.querySelector('.pdfbtn:not(.anbtn)'); if (pdf) pdf.onclick = function () { pdfStub('summary'); };
+  var anb = v.querySelector('.anbtn'); if (anb) anb.onclick = function () { scrAnalytics(mode); };
   render(v);
 }
 
@@ -453,14 +455,44 @@ function scrTasks(filter){
     head('Project tasks', esc(P.name) + ' &middot; read only')
     + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">' + chips + '</div>'
     + rows
-    + '<div class="foot"><button class="pdfbtn">PDF</button><span></span></div>'
+    + '<div class="foot"><button class="pdfbtn">PDF</button><button class="pdfbtn anbtn">Analytics</button></div>'
   );
   v.insertBefore(backBtn(scrMenu), v.firstChild);
   v.querySelectorAll('.chip').forEach(function (c) {
     c.onclick = function () { scrTasks(c.getAttribute('data-f')); };
   });
-  v.querySelector('.pdfbtn').onclick = function () { pdfStub('tasks'); };
+  v.querySelector('.pdfbtn:not(.anbtn)').onclick = function () { pdfStub('tasks'); };
+  v.querySelector('.anbtn').onclick = function () { scrAnalytics('tasks'); };
   render(v);
+}
+
+/* ============ analytics (Kevin, contextual) ============ */
+function scrAnalytics(context){
+  var titles = { summary: 'Budget analytics', sitecheck: 'Progress analytics', tasks: 'Task analytics' };
+  var title = titles[context] || 'Analytics';
+  if (P.demo) {
+    var v0 = el(head(P.name, title + ' &middot; by Kevin')
+      + '<p class="note">DEMO. Live: Kevin reads the ' + esc(context) + ' and writes a short analysis here.</p>');
+    v0.insertBefore(backBtn(scrMenu), v0.firstChild);
+    render(v0);
+    return;
+  }
+  SCREEN.innerHTML = '<div class="topbar"><div class="brand">ENKI &amp; GEDE BAGUS &middot; BALI</div><h1>Kevin is thinking&hellip;</h1><div class="sub">Analyzing ' + esc(context) + '</div></div>';
+  api('app_analyze', { context: context, project: P.name }).then(function (j) {
+    if (!j || !j.ok) throw new Error((j && (j.error || 'error')) || 'error');
+    var kpiHtml = (j.kpis && j.kpis.length) ? '<div class="kpi">' + j.kpis.map(function (x) { return '<div><div class="k">' + esc(x.k) + '</div><div class="v">' + esc(x.v) + '</div></div>'; }).join('') + '</div>' : '';
+    var body = '<div style="font-family:var(--serif);font-size:14px;line-height:1.65;color:var(--ink);white-space:pre-wrap;margin-top:14px">' + esc(j.text) + '</div>';
+    var v = el(head(P.name, title + ' &middot; by Kevin') + kpiHtml + body
+      + '<div class="foot"><span></span><button class="pdfbtn anbtn">&#8635; Re-run</button></div>');
+    v.insertBefore(backBtn(scrMenu), v.firstChild);
+    v.querySelector('.anbtn').onclick = function () { scrAnalytics(context); };
+    render(v);
+  }).catch(function (e) {
+    SCREEN.innerHTML = '';
+    var v = el(head(P.name, 'Analytics failed', true) + '<p class="note">' + esc(String((e && e.message) || e)) + '</p>');
+    v.insertBefore(backBtn(scrMenu), v.firstChild);
+    SCREEN.appendChild(v);
+  });
 }
 
 /* ============ boot: live data via webhook, demo fallback ============ */
