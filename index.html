@@ -137,7 +137,10 @@ function pct(v){ return (v === null || v === undefined) ? '—' : v + '%'; }
 function el(html){ var d = document.createElement('div'); d.innerHTML = html; return d; }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 var SCREEN = document.getElementById('screen');
-function render(node){ SCREEN.innerHTML = ''; SCREEN.appendChild(node); window.scrollTo(0, 0); }
+function showFatal(msg){ try { SCREEN.innerHTML = '<div style="padding:16px 14px;font-family:monospace;font-size:12px;color:#9a3412;white-space:pre-wrap;word-break:break-word">Diagnostic (screenshot this):\n\n' + String(msg) + '</div>'; } catch (e) {} }
+window.addEventListener('error', function (ev) { showFatal('JS error: ' + ((ev.error && (ev.error.stack || ev.error.message)) || ev.message || 'unknown') + '\n@ ' + (ev.filename || '') + ':' + (ev.lineno || '')); });
+window.addEventListener('unhandledrejection', function (ev) { var r = ev.reason; showFatal('Promise rejected: ' + ((r && (r.stack || r.message)) || String(r))); });
+function render(node){ try { SCREEN.innerHTML = ''; SCREEN.appendChild(node); if (window.scrollTo) window.scrollTo(0, 0); } catch (e) { showFatal('render: ' + (e.stack || e.message)); } }
 function head(title, sub, flag){
   return '<div class="topbar' + (flag ? ' flag' : '') + '">'
     + '<div class="brand">ENKI &amp; GEDE BAGUS &middot; BALI</div>'
