@@ -376,6 +376,12 @@ function scrRefresh(){
   }
   SCREEN.innerHTML = '<div class="topbar"><div class="brand">ENKI &amp; GEDE BAGUS &middot; BALI</div><h1>Refreshing&hellip;</h1><div class="sub">Rebuilding structure from the sheet</div></div>';
   api('app_map_refresh').then(function (j) {
+    if (j && !j.ok && j.error === 'manual_map') {
+      var vm = el(head(P.name, 'Manual map') + '<p class="note">This project uses a hand-built map and is not auto-rebuilt. Ask Alfred if it needs updating.</p>');
+      vm.insertBefore(backBtn(scrMenu), vm.firstChild);
+      render(vm);
+      return;
+    }
     if (!j || !j.ok) throw new Error((j && (j.error || 'error')) || 'error');
     var sec = j.sections, pos = j.positions;
     var skips = (j.skipped && j.skipped.length) ? ' &middot; skipped: ' + j.skipped.map(esc).join(', ') : '';
