@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Toolbox</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root{
+    --ink:#111827; --muted:#6b7280; --faint:#9ca3af; --hair:#e5e7eb;
+    --navy:#16314f; --flag:#9a3412; --paper:#ffffff;
+    --serif:Georgia,'Times New Roman',serif; --sans:Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);color:var(--ink);background:var(--paper);padding:24px 20px}
+  .top{border-top:4px solid var(--navy);padding-top:16px}
+  .brand{font-size:11px;letter-spacing:.28em;color:var(--muted);text-transform:uppercase}
+  h1{font-family:var(--serif);font-size:22px;margin:10px 0 4px}
+  .sub{font-size:13px;color:var(--muted);margin-bottom:20px}
+  .kv{border-top:1px solid var(--hair);padding:10px 0;display:flex;justify-content:space-between;font-size:14px}
+  .kv:last-child{border-bottom:1px solid var(--hair)}
+  .k{color:var(--muted);text-transform:uppercase;font-size:11px;letter-spacing:.12em;align-self:center}
+  .v{font-family:var(--serif);color:var(--navy)}
+  .v.warn{color:var(--flag)}
+  .note{margin-top:20px;font-size:12px;color:var(--faint)}
+</style>
+</head>
+<body>
+  <div class="top">
+    <div class="brand">ENKI</div>
+    <h1>App shell — build check</h1>
+    <div class="sub">Placeholder page. No data lives here.</div>
+  </div>
+  <div class="kv"><span class="k">Route param</span><span class="v" id="route">—</span></div>
+  <div class="kv"><span class="k">Opened inside Telegram</span><span class="v" id="tg">—</span></div>
+  <div class="kv"><span class="k">Auth payload present</span><span class="v" id="init">—</span></div>
+  <p class="note">If all three rows look right, the Web App button pipeline works end to end. The real app arrives with iteration 1.</p>
+<script>
+  var q = new URLSearchParams(location.search);
+  document.getElementById('route').textContent = q.get('route') || 'missing';
+  var wa = window.Telegram && window.Telegram.WebApp;
+  var inside = !!(wa && wa.initData && wa.initData.length > 0);
+  var tgEl = document.getElementById('tg');
+  tgEl.textContent = inside ? 'yes' : 'no';
+  if (!inside) tgEl.className = 'v warn';
+  var initEl = document.getElementById('init');
+  initEl.textContent = inside ? ('yes (' + wa.initData.length + ' chars)') : 'no';
+  if (!inside) initEl.className = 'v warn';
+  if (wa) { wa.ready(); wa.expand(); }
+</script>
+</body>
+</html>
