@@ -159,7 +159,7 @@ function scrMenu(){
     + '<div><div class="k">Done</div><div class="v">' + rp(doneRp) + '</div></div>'
     + '</div>'
     + '<button class="btn primary" data-a="summary">Project summary</button>'
-    + '<button class="btn" data-a="tasks" style="display:flex;justify-content:space-between"><span>Trello tasks</span><span style="font-size:11px;color:var(--faint)">' + (P.tasks ? openTasks().length + ' open' : '') + '</span></button>'
+    + '<button class="btn" data-a="tasks" style="display:flex;justify-content:space-between"><span>Project tasks</span><span style="font-size:11px;color:var(--faint)">' + (P.tasks ? P.tasks.length + '' : '') + '</span></button>'
     + '<button class="btn" data-a="sitecheck">Site check</button>'
     + '<button class="btn" data-a="edit">Edit prices and quantities</button>'
     + '<button class="btn" data-a="payments">Payments (view)</button>'
@@ -171,7 +171,7 @@ function scrMenu(){
     b.onclick = function () {
       var a = b.getAttribute('data-a');
       if (a === 'summary') scrSections('summary');
-      else if (a === 'tasks') scrTasks('open');
+      else if (a === 'tasks') scrTasks('all');
       else if (a === 'sitecheck') scrSections('sitecheck');
       else if (a === 'edit') scrSections('edit');
       else if (a === 'payments') scrPayments();
@@ -402,16 +402,14 @@ function scrTasks(filter){
     }
   }
   var all = P.tasks || [];
-  var shown = filter === 'open' ? all.filter(function (t) { return OPEN_STATUSES.indexOf(t.status) >= 0; })
-            : filter === 'all' ? all
-            : all.filter(function (t) { return t.status === filter; });
-  var statuses = [];
-  all.forEach(function (t) { if (statuses.indexOf(t.status) < 0) statuses.push(t.status); });
-  var chips = '<span class="chip' + (filter === 'open' ? ' on' : '') + '" data-f="open">Open ' + all.filter(function (t) { return OPEN_STATUSES.indexOf(t.status) >= 0; }).length + '</span>';
-  statuses.forEach(function (s) {
-    chips += '<span class="chip' + (filter === s ? ' on' : '') + '" data-f="' + esc(s) + '">' + esc(s) + ' ' + all.filter(function (t) { return t.status === s; }).length + '</span>';
+  var shown = filter === 'all' ? all : all.filter(function (t) { return t.status === filter; });
+  var ORDER = ['New', 'In progress', 'On hold', 'Review', 'Approved', 'Cancelled'];
+  var chips = '<span class="chip' + (filter === 'all' ? ' on' : '') + '" data-f="all">All ' + all.length + '</span>';
+  ORDER.forEach(function (s) {
+    var n = all.filter(function (t) { return t.status === s; }).length;
+    if (!n) return;
+    chips += '<span class="chip' + (filter === s ? ' on' : '') + '" data-f="' + esc(s) + '">' + esc(s) + ' ' + n + '</span>';
   });
-  chips += '<span class="chip' + (filter === 'all' ? ' on' : '') + '" data-f="all">All ' + all.length + '</span>';
   var rows = shown.map(function (t) {
     var dates = (fmtDate(t.start) || fmtDate(t.due)) ? ((fmtDate(t.start) || '—') + ' → ' + (fmtDate(t.due) || '—')) : 'no dates';
     var metaColor = t.overdue ? 'color:var(--flag)' : 'color:var(--muted)';
@@ -425,7 +423,7 @@ function scrTasks(filter){
   }).join('');
   if (!shown.length) rows = '<p class="note">No tasks here.</p>';
   var v = el(
-    head('Trello tasks', esc(P.name) + ' &middot; read only')
+    head('Project tasks', esc(P.name) + ' &middot; read only')
     + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">' + chips + '</div>'
     + rows
     + '<div class="foot"><button class="pdfbtn">PDF</button><span></span></div>'
