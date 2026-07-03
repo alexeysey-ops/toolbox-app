@@ -19,6 +19,8 @@
   .topbar.flag{border-top-color:var(--flag)}
   .brand{font-size:9.5px;letter-spacing:.2em;color:var(--muted)}
   .brandfoot{text-align:center;font-size:8.5px;letter-spacing:.22em;color:var(--faint);padding:22px 0 6px}
+  .chip{border:1px solid var(--hair);color:var(--muted);font-size:11px;padding:4px 10px;border-radius:11px;cursor:pointer;white-space:nowrap}
+  .chip.on{background:var(--navy);border-color:var(--navy);color:#fff}
   h1{font-family:var(--serif);font-size:21px;margin:8px 0 2px;font-weight:700}
   .sub{font-size:12px;color:var(--muted);margin-bottom:14px}
   .sub .demo{color:var(--flag);font-weight:bold}
@@ -96,6 +98,14 @@ var DEMO = {
     { id: 'snap2', date: '01.07.2026 20:48', label: 'before qty edit WAL-005', cells: 97 },
     { id: 'snap1', date: '29.06.2026 15:07', label: 'before name edit', cells: 97 }
   ],
+  tasks: [
+    { name: 'Pool plumbing pressure test', status: 'In progress', assignee: 'Ketut', start: '2026-06-25', due: '2026-07-01', overdue: true },
+    { name: 'Waterproofing rooftop, 2nd layer', status: 'In progress', assignee: 'Wayan', start: '2026-06-28', due: '2026-07-05', overdue: false },
+    { name: 'Order bathroom natural stone', status: 'New', assignee: '', start: null, due: null, overdue: false },
+    { name: 'Gypsum ceiling, communal area', status: 'Review', assignee: 'Made', start: '2026-06-20', due: '2026-06-30', overdue: false },
+    { name: 'Fence painting, exterior side', status: 'On hold', assignee: 'Wayan', start: '2026-06-15', due: null, overdue: false },
+    { name: 'Site meeting #12', status: 'Approved', assignee: 'Aleksei', start: null, due: null, overdue: false }
+  ],
   sections: [
     { id: 's1', name: 'Preliminaries', positions: [
       { code: 'PRE-001', desc: 'Site clearing and disposal', qty: 615, unit: 'm2', price: 25000, done: 100 },
@@ -149,6 +159,7 @@ function scrMenu(){
     + '<div><div class="k">Done</div><div class="v">' + rp(doneRp) + '</div></div>'
     + '</div>'
     + '<button class="btn primary" data-a="summary">Project summary</button>'
+    + '<button class="btn" data-a="tasks" style="display:flex;justify-content:space-between"><span>Trello tasks</span><span style="font-size:11px;color:var(--faint)">' + (P.tasks ? openTasks().length + ' open' : '') + '</span></button>'
     + '<button class="btn" data-a="sitecheck">Site check</button>'
     + '<button class="btn" data-a="edit">Edit prices and quantities</button>'
     + '<button class="btn" data-a="payments">Payments (view)</button>'
@@ -160,6 +171,7 @@ function scrMenu(){
     b.onclick = function () {
       var a = b.getAttribute('data-a');
       if (a === 'summary') scrSections('summary');
+      else if (a === 'tasks') scrTasks('open');
       else if (a === 'sitecheck') scrSections('sitecheck');
       else if (a === 'edit') scrSections('edit');
       else if (a === 'payments') scrPayments();
@@ -355,6 +367,74 @@ function scrRefresh(){
     + '<p class="note">Also runs automatically every night. Use Refresh only after manual edits of the sheet file.</p>'
   );
   v.insertBefore(backBtn(scrMenu), v.firstChild);
+  render(v);
+}
+
+/* ============ trello tasks ============ */
+var OPEN_STATUSES = ['New', 'In progress', 'On hold', 'Review'];
+var STATUS_COLOR = { 'New': 'var(--faint)', 'In progress': 'var(--navy)', 'On hold': '#b45309', 'Review': '#0f6e56', 'Approved': '#0f6e56', 'Cancelled': 'var(--faint)' };
+function openTasks(){ return (P.tasks || []).filter(function (t) { return OPEN_STATUSES.indexOf(t.status) >= 0; }); }
+function fmtDate(iso){ if (!iso) return null; var d = new Date(iso); if (isNaN(d)) return null; return ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2); }
+function api(action, params){
+  return fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ initData: (WA && WA.initData) || '', route: ROUTE, action: action, params: params || {} })
+  }).then(function (r) { return r.json(); });
+}
+function scrTasks(filter){
+  if (!P.tasks) {
+    if (P.demo) { P.tasks = []; }
+    else {
+      SCREEN.innerHTML = '<div class="topbar"><div class="brand">ENKI &amp; GEDE BAGUS &middot; BALI</div><h1>Loading&hellip;</h1><div class="sub">Fetching tasks from Trello</div></div>';
+      api('app_tasks_read').then(function (j) {
+        if (!j || !j.ok) throw new Error((j && j.error) || 'error');
+        P.tasks = j.tasks || [];
+        scrTasks(filter);
+      }).catch(function (e) {
+        SCREEN.innerHTML = '';
+        var v = el(head('Connection error', 'Could not load tasks', true)
+          + '<p class="note">' + esc(String((e && e.message) || e)) + '</p>');
+        v.insertBefore(backBtn(scrMenu), v.firstChild);
+        SCREEN.appendChild(v);
+      });
+      return;
+    }
+  }
+  var all = P.tasks || [];
+  var shown = filter === 'open' ? all.filter(function (t) { return OPEN_STATUSES.indexOf(t.status) >= 0; })
+            : filter === 'all' ? all
+            : all.filter(function (t) { return t.status === filter; });
+  var statuses = [];
+  all.forEach(function (t) { if (statuses.indexOf(t.status) < 0) statuses.push(t.status); });
+  var chips = '<span class="chip' + (filter === 'open' ? ' on' : '') + '" data-f="open">Open ' + all.filter(function (t) { return OPEN_STATUSES.indexOf(t.status) >= 0; }).length + '</span>';
+  statuses.forEach(function (s) {
+    chips += '<span class="chip' + (filter === s ? ' on' : '') + '" data-f="' + esc(s) + '">' + esc(s) + ' ' + all.filter(function (t) { return t.status === s; }).length + '</span>';
+  });
+  chips += '<span class="chip' + (filter === 'all' ? ' on' : '') + '" data-f="all">All ' + all.length + '</span>';
+  var rows = shown.map(function (t) {
+    var dates = (fmtDate(t.start) || fmtDate(t.due)) ? ((fmtDate(t.start) || '—') + ' → ' + (fmtDate(t.due) || '—')) : 'no dates';
+    var metaColor = t.overdue ? 'color:var(--flag)' : 'color:var(--muted)';
+    return '<div style="padding:10px 0;border-bottom:1px solid var(--hair2)">'
+      + '<div style="display:flex;justify-content:space-between;gap:8px">'
+      + '<span style="font-size:13px">' + esc(t.name) + '</span>'
+      + '<span class="caps" style="white-space:nowrap;padding-top:2px;color:' + (STATUS_COLOR[t.status] || 'var(--muted)') + '">' + esc(t.status) + '</span></div>'
+      + '<div style="font-size:11px;margin-top:3px;' + metaColor + '">'
+      + (t.assignee ? esc(t.assignee) : '<span style="color:var(--faint)">unassigned</span>')
+      + ' &middot; ' + dates + (t.overdue ? ' &middot; overdue' : '') + '</div></div>';
+  }).join('');
+  if (!shown.length) rows = '<p class="note">No tasks here.</p>';
+  var v = el(
+    head('Trello tasks', esc(P.name) + ' &middot; read only')
+    + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">' + chips + '</div>'
+    + rows
+    + '<div class="foot"><button class="pdfbtn">PDF</button><span></span></div>'
+  );
+  v.insertBefore(backBtn(scrMenu), v.firstChild);
+  v.querySelectorAll('.chip').forEach(function (c) {
+    c.onclick = function () { scrTasks(c.getAttribute('data-f')); };
+  });
+  v.querySelector('.pdfbtn').onclick = function () { pdfStub('tasks'); };
   render(v);
 }
 
