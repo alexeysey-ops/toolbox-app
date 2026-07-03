@@ -4,50 +4,358 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Toolbox</title>
+<title>Bill of Quantities</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
   :root{
-    --ink:#111827; --muted:#6b7280; --faint:#9ca3af; --hair:#e5e7eb;
-    --navy:#16314f; --flag:#9a3412; --paper:#ffffff;
+    --ink:#111827; --muted:#6b7280; --faint:#9ca3af; --hair:#e5e7eb; --hair2:#eef1f4;
+    --navy:#16314f; --navy2:#2c5378; --flag:#9a3412; --paper:#ffffff;
     --serif:Georgia,'Times New Roman',serif; --sans:Helvetica,Arial,sans-serif;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:var(--sans);color:var(--ink);background:var(--paper);padding:24px 20px}
-  .top{border-top:4px solid var(--navy);padding-top:16px}
-  .brand{font-size:11px;letter-spacing:.28em;color:var(--muted);text-transform:uppercase}
-  h1{font-family:var(--serif);font-size:22px;margin:10px 0 4px}
-  .sub{font-size:13px;color:var(--muted);margin-bottom:20px}
-  .kv{border-top:1px solid var(--hair);padding:10px 0;display:flex;justify-content:space-between;font-size:14px}
-  .kv:last-child{border-bottom:1px solid var(--hair)}
-  .k{color:var(--muted);text-transform:uppercase;font-size:11px;letter-spacing:.12em;align-self:center}
-  .v{font-family:var(--serif);color:var(--navy)}
-  .v.warn{color:var(--flag)}
-  .note{margin-top:20px;font-size:12px;color:var(--faint)}
+  html,body{background:var(--paper)}
+  body{font-family:var(--sans);color:var(--ink);padding:0 16px 84px;max-width:560px;margin:0 auto}
+  .topbar{border-top:4px solid var(--navy);margin:0 -16px;padding:14px 16px 0}
+  .topbar.flag{border-top-color:var(--flag)}
+  .brand{font-size:10px;letter-spacing:.3em;color:var(--muted)}
+  h1{font-family:var(--serif);font-size:21px;margin:8px 0 2px;font-weight:700}
+  .sub{font-size:12px;color:var(--muted);margin-bottom:14px}
+  .sub .demo{color:var(--flag);font-weight:bold}
+  .kpi{display:flex;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);margin-bottom:16px}
+  .kpi>div{flex:1;padding:10px 4px;text-align:center}
+  .kpi>div+div{border-left:1px solid var(--hair)}
+  .kpi .k{font-size:9px;letter-spacing:.16em;color:var(--muted);text-transform:uppercase;margin-bottom:3px}
+  .kpi .v{font-family:var(--serif);font-size:15px;color:var(--navy)}
+  .kpi .v.warn{color:var(--flag)}
+  .btn{display:block;width:100%;padding:13px 14px;margin-bottom:10px;font-family:var(--sans);font-size:14px;
+       border:1px solid var(--navy);background:#fff;color:var(--navy);text-align:left;border-radius:2px;cursor:pointer}
+  .btn.primary{background:var(--navy);color:#fff}
+  .btn.flag{border-color:var(--flag);color:var(--flag)}
+  .btn.flag.filled{background:var(--flag);color:#fff}
+  .btn:active{opacity:.85}
+  .sep{border:0;border-top:1px solid var(--hair);margin:16px 0}
+  .caps{font-size:9px;letter-spacing:.16em;color:var(--muted);text-transform:uppercase}
+  table{width:100%;border-collapse:collapse}
+  th{font-size:9px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;font-weight:normal;
+     text-align:left;padding:6px 4px;border-bottom:1px solid var(--ink)}
+  th.num,td.num{text-align:right}
+  td{padding:9px 4px;border-bottom:1px solid var(--hair2);font-size:13px;vertical-align:top}
+  td .code{font-size:10px;color:var(--faint)}
+  td .meta{font-size:10.5px;color:var(--muted);margin-top:2px}
+  .money{font-family:var(--serif);color:var(--navy);white-space:nowrap}
+  .rowlink{cursor:pointer}
+  .rowlink:active{background:var(--hair2)}
+  .bar{height:3px;background:var(--hair);margin-top:6px;border-radius:1px;overflow:hidden}
+  .bar>i{display:block;height:100%;background:var(--navy)}
+  .totalrow td{border-top:1.5px solid var(--ink);border-bottom:none;font-family:var(--serif);color:var(--navy);font-size:14px;padding-top:10px}
+  .back{background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;padding:8px 0;letter-spacing:.06em}
+  input.pct,input.qty,input.price{width:64px;padding:6px 6px;font-size:13px;border:1px solid var(--hair);border-radius:2px;
+       text-align:right;font-family:var(--serif);color:var(--ink);background:#fff}
+  input.price{width:92px}
+  input.changed{border-color:var(--flag);color:var(--flag)}
+  .foot{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--hair);padding:10px 16px;
+        display:flex;justify-content:space-between;align-items:center;gap:10px;max-width:560px;margin:0 auto}
+  .pdfbtn{border:1px solid var(--navy);color:var(--navy);background:#fff;padding:9px 14px;font-size:12px;border-radius:2px;cursor:pointer;letter-spacing:.08em}
+  .actbtn{flex:1;max-width:300px;background:var(--navy);color:#fff;border:1px solid var(--navy);padding:10px 12px;font-size:13px;border-radius:2px;cursor:pointer}
+  .actbtn.flag{background:var(--flag);border-color:var(--flag)}
+  .actbtn:disabled{opacity:.4}
+  .pending{font-size:11px;color:var(--flag)}
+  .card{border:1px solid var(--hair);border-radius:2px;padding:12px;margin-bottom:10px;cursor:pointer}
+  .card.sel{border-color:var(--flag)}
+  .card .t{font-family:var(--serif);font-size:14px;color:var(--ink)}
+  .card .m{font-size:11px;color:var(--muted);margin-top:3px}
+  .note{font-size:11px;color:var(--faint);margin-top:14px;line-height:1.5}
+  .bigok{font-family:var(--serif);font-size:18px;color:var(--navy);margin:18px 0 6px}
+  #screen{min-height:60vh}
 </style>
 </head>
 <body>
-  <div class="top">
-    <div class="brand">ENKI</div>
-    <h1>App shell — build check</h1>
-    <div class="sub">Placeholder page. No data lives here.</div>
-  </div>
-  <div class="kv"><span class="k">Route param</span><span class="v" id="route">—</span></div>
-  <div class="kv"><span class="k">Opened inside Telegram</span><span class="v" id="tg">—</span></div>
-  <div class="kv"><span class="k">Auth payload present</span><span class="v" id="init">—</span></div>
-  <p class="note">If all three rows look right, the Web App button pipeline works end to end. The real app arrives with iteration 1.</p>
+  <div id="screen"></div>
 <script>
-  var q = new URLSearchParams(location.search);
-  document.getElementById('route').textContent = q.get('route') || 'missing';
-  var wa = window.Telegram && window.Telegram.WebApp;
-  var inside = !!(wa && wa.initData && wa.initData.length > 0);
-  var tgEl = document.getElementById('tg');
-  tgEl.textContent = inside ? 'yes' : 'no';
-  if (!inside) tgEl.className = 'v warn';
-  var initEl = document.getElementById('init');
-  initEl.textContent = inside ? ('yes (' + wa.initData.length + ' chars)') : 'no';
-  if (!inside) initEl.className = 'v warn';
-  if (wa) { wa.ready(); wa.expand(); }
+'use strict';
+/* ============ context ============ */
+var Q = new URLSearchParams(location.search);
+var ROUTE = Q.get('route') || '';
+var WA = window.Telegram && window.Telegram.WebApp;
+if (WA) { WA.ready(); WA.expand(); }
+
+/* ============ data layer ============ */
+/* DEMO provider: fake numbers only. Real provider (webhook + initData) arrives next step. */
+var DEMO = {
+  name: 'Demo Villa', route: ROUTE || 'demo', demo: true,
+  budget: 1234000000, paid: 640000000,
+  payments: [
+    { date: '02.04.2026', note: 'Payment to contractor 1', amount: 200000000 },
+    { date: '05.05.2026', note: 'Payment to contractor 2', amount: 240000000 },
+    { date: '01.06.2026', note: 'Payment to contractor 3', amount: 200000000 }
+  ],
+  snapshots: [
+    { id: 'snap3', date: '03.07.2026 14:05', label: 'before Site check save', cells: 97 },
+    { id: 'snap2', date: '01.07.2026 20:48', label: 'before qty edit WAL-005', cells: 97 },
+    { id: 'snap1', date: '29.06.2026 15:07', label: 'before name edit', cells: 97 }
+  ],
+  sections: [
+    { id: 's1', name: 'Preliminaries', positions: [
+      { code: 'PRE-001', desc: 'Site clearing and disposal', qty: 615, unit: 'm2', price: 25000, done: 100 },
+      { code: 'PRE-002', desc: 'Temporary work house', qty: 25, unit: 'm2', price: 1000000, done: 100 },
+      { code: 'PRE-003', desc: 'Labour safety equipment', qty: 1, unit: 'ls', price: 10000000, done: 60 } ] },
+    { id: 's2', name: 'Wall works', positions: [
+      { code: 'WAL-001', desc: 'Brick wall 100mm', qty: 780, unit: 'm2', price: 210000, done: 90 },
+      { code: 'WAL-002', desc: 'Brick wall 75mm', qty: 12, unit: 'm2', price: 190000, done: 100 },
+      { code: 'WAL-003', desc: 'Practical columns', qty: 148, unit: 'ml', price: 155000, done: 85 },
+      { code: 'WAL-004', desc: 'Plaster works', qty: 1700, unit: 'm2', price: 95000, done: 55 } ] },
+    { id: 's3', name: 'Ceiling works', positions: [
+      { code: 'CEI-001', desc: 'Gypsum ceiling', qty: 200, unit: 'm2', price: 237000, done: 30 },
+      { code: 'CEI-002', desc: 'Wood ceiling incl. coating', qty: 90, unit: 'm2', price: 1150000, done: 0 } ] },
+    { id: 's4', name: 'Painting works', positions: [
+      { code: 'PNT-001', desc: 'Exterior paint two coats', qty: 850, unit: 'm2', price: 95000, done: 10 },
+      { code: 'PNT-002', desc: 'Interior paint two coats', qty: 680, unit: 'm2', price: 85000, done: 0 } ] }
+  ]
+};
+DEMO.sections.forEach(function (s) {
+  s.total = 0; s.doneRp = 0;
+  s.positions.forEach(function (p) { p.total = p.qty * p.price; s.total += p.total; s.doneRp += p.total * p.done / 100; });
+  s.done = s.total ? Math.round(100 * s.doneRp / s.total) : 0;
+});
+var P = DEMO;
+
+/* ============ helpers ============ */
+function rp(n){ return 'Rp ' + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+function el(html){ var d = document.createElement('div'); d.innerHTML = html; return d; }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+var SCREEN = document.getElementById('screen');
+function render(node){ SCREEN.innerHTML = ''; SCREEN.appendChild(node); window.scrollTo(0, 0); }
+function head(title, sub, flag){
+  return '<div class="topbar' + (flag ? ' flag' : '') + '">'
+    + '<div class="brand">E N K I</div>'
+    + '<h1>' + esc(title) + '</h1>'
+    + '<div class="sub">' + sub + (P.demo ? ' · <span class="demo">DEMO DATA</span>' : '') + '</div></div>';
+}
+function backBtn(fn){ var b = el('<button class="back">&#8592; BACK</button>'); b.firstChild.onclick = fn; return b.firstChild; }
+function pdfStub(kind){ alert('PDF export (' + kind + ') will be wired to the existing PDF pipeline — Alfred sends the file to chat.'); }
+
+/* ============ screens ============ */
+function scrMenu(){
+  var doneRp = 0, total = 0;
+  P.sections.forEach(function (s) { doneRp += s.doneRp; total += s.total; });
+  var v = el(
+    head(P.name, 'Bill of Quantities (read only)')
+    + '<div class="kpi">'
+    + '<div><div class="k">Budget</div><div class="v">' + rp(P.budget) + '</div></div>'
+    + '<div><div class="k">Paid</div><div class="v">' + rp(P.paid) + '</div></div>'
+    + '<div><div class="k">Done</div><div class="v">' + rp(doneRp) + '</div></div>'
+    + '</div>'
+    + '<button class="btn primary" data-a="summary">Project summary</button>'
+    + '<button class="btn" data-a="sitecheck">Site check</button>'
+    + '<button class="btn" data-a="edit">Edit prices and quantities</button>'
+    + '<button class="btn" data-a="payments">Payments (view)</button>'
+    + '<button class="btn" data-a="refresh">&#128260; Refresh</button>'
+    + '<hr class="sep">'
+    + '<button class="btn flag" data-a="rollback">&#9888; Emergency rollback</button>'
+  );
+  v.querySelectorAll('[data-a]').forEach(function (b) {
+    b.onclick = function () {
+      var a = b.getAttribute('data-a');
+      if (a === 'summary') scrSections('summary');
+      else if (a === 'sitecheck') scrSections('sitecheck');
+      else if (a === 'edit') scrSections('edit');
+      else if (a === 'payments') scrPayments();
+      else if (a === 'refresh') scrRefresh();
+      else if (a === 'rollback') scrRollback();
+    };
+  });
+  render(v);
+}
+
+function scrSections(mode){
+  var titles = { summary: 'Project summary', sitecheck: 'Site check', edit: 'Edit prices and quantities' };
+  var subs = { summary: 'Read only', sitecheck: 'Select a section — no prices shown', edit: '<span style="color:var(--flag)">Edit mode</span>' };
+  var rows = P.sections.map(function (s, i) {
+    if (mode === 'sitecheck') {
+      return '<tr class="rowlink" data-i="' + i + '"><td>' + esc(s.name)
+        + '<div class="bar"><i style="width:' + s.done + '%"></i></div></td>'
+        + '<td class="num" style="color:var(--faint);font-size:11px">done ' + s.done + '%</td></tr>';
+    }
+    return '<tr class="rowlink" data-i="' + i + '"><td>' + esc(s.name)
+      + '<div class="bar"><i style="width:' + s.done + '%"></i></div>'
+      + '<div class="meta">done ' + s.done + '%</div></td>'
+      + '<td class="num money">' + rp(s.total) + '</td></tr>';
+  }).join('');
+  var total = P.sections.reduce(function (a, s) { return a + s.total; }, 0);
+  var totalRow = (mode === 'sitecheck') ? '' :
+    '<tr class="totalrow"><td>PROJECT TOTAL</td><td class="num">' + rp(total) + '</td></tr>';
+  var v = el(
+    head(P.name, titles[mode] + ' · ' + subs[mode], mode === 'edit')
+    + '<table><thead><tr><th>Section</th><th class="num">' + (mode === 'sitecheck' ? '' : 'Total') + '</th></tr></thead>'
+    + '<tbody>' + rows + totalRow + '</tbody></table>'
+    + (mode === 'summary' ? '<div class="foot"><button class="pdfbtn">PDF</button><span></span></div>' : '')
+  );
+  v.insertBefore(backBtn(scrMenu), v.firstChild);
+  v.querySelectorAll('.rowlink').forEach(function (r) {
+    r.onclick = function () {
+      var s = P.sections[+r.getAttribute('data-i')];
+      if (mode === 'summary') scrDetail(s);
+      else if (mode === 'sitecheck') scrSiteCheck(s);
+      else scrEdit(s);
+    };
+  });
+  var pdf = v.querySelector('.pdfbtn'); if (pdf) pdf.onclick = function () { pdfStub('summary'); };
+  render(v);
+}
+
+function scrDetail(s){
+  var rows = s.positions.map(function (p) {
+    return '<tr><td>' + esc(p.desc) + ' <span class="code">' + esc(p.code) + '</span>'
+      + '<div class="meta">unit price ' + rp(p.price) + ' &middot; done ' + p.done + '%</div></td>'
+      + '<td class="num">' + p.qty + ' ' + esc(p.unit) + '</td>'
+      + '<td class="num money">' + rp(p.total) + '</td></tr>';
+  }).join('');
+  var v = el(
+    head(s.name, 'Section detail · Read only')
+    + '<table><thead><tr><th>Position</th><th class="num">Qty</th><th class="num">Total</th></tr></thead>'
+    + '<tbody>' + rows
+    + '<tr class="totalrow"><td>SECTION TOTAL</td><td></td><td class="num">' + rp(s.total) + '</td></tr>'
+    + '</tbody></table>'
+    + '<div class="foot"><button class="pdfbtn">PDF</button><span></span></div>'
+  );
+  v.insertBefore(backBtn(function () { scrSections('summary'); }), v.firstChild);
+  v.querySelector('.pdfbtn').onclick = function () { pdfStub('section'); };
+  render(v);
+}
+
+function scrSiteCheck(s){
+  var rows = s.positions.map(function (p, i) {
+    return '<tr><td>' + esc(p.desc) + ' <span class="code">' + esc(p.code) + '</span></td>'
+      + '<td class="num">' + p.qty + ' ' + esc(p.unit) + '</td>'
+      + '<td class="num" style="color:var(--faint)">' + p.done + '%</td>'
+      + '<td class="num"><input class="pct" type="number" min="0" max="100" inputmode="numeric" placeholder="&mdash;" data-i="' + i + '"></td></tr>';
+  }).join('');
+  var v = el(
+    head(s.name, 'Site check · enter NEW % only')
+    + '<table><thead><tr><th>Position</th><th class="num">Qty</th><th class="num">Prev</th><th class="num">New %</th></tr></thead>'
+    + '<tbody>' + rows + '</tbody></table>'
+    + '<div class="foot"><button class="pdfbtn">PDF</button>'
+    + '<button class="actbtn" disabled>Save &rarr; Works Done</button></div>'
+  );
+  v.insertBefore(backBtn(function () { scrSections('sitecheck'); }), v.firstChild);
+  var save = v.querySelector('.actbtn');
+  var inputs = v.querySelectorAll('input.pct');
+  function refresh(){
+    var n = 0;
+    inputs.forEach(function (inp) {
+      var p = s.positions[+inp.getAttribute('data-i')];
+      var has = inp.value !== '';
+      inp.classList.toggle('changed', has && +inp.value !== p.done);
+      if (has && +inp.value !== p.done) n++;
+    });
+    save.disabled = n === 0;
+    save.textContent = n ? 'Save ' + n + ' → Works Done' : 'Save → Works Done';
+  }
+  inputs.forEach(function (inp) { inp.oninput = refresh; });
+  save.onclick = function () {
+    alert('DEMO: nothing is written. Live version: snapshot → ARCHIVE → Works Done cells → audit log.');
+  };
+  v.querySelector('.pdfbtn').onclick = function () { pdfStub('site check'); };
+  render(v);
+}
+
+function scrEdit(s){
+  var rows = s.positions.map(function (p, i) {
+    return '<tr><td>' + esc(p.desc) + ' <span class="code">' + esc(p.code) + '</span>'
+      + '<div class="meta">total <span class="money" data-t="' + i + '">' + rp(p.total) + '</span></div></td>'
+      + '<td class="num"><input class="qty" type="number" inputmode="decimal" value="' + p.qty + '" data-q="' + i + '"></td>'
+      + '<td class="num"><input class="price" type="number" inputmode="numeric" value="' + p.price + '" data-p="' + i + '"></td></tr>';
+  }).join('');
+  var v = el(
+    head(s.name, '<span style="color:var(--flag)">(edit)</span> qty &middot; unit price', true)
+    + '<table><thead><tr><th>Position</th><th class="num">Qty</th><th class="num">Unit price</th></tr></thead>'
+    + '<tbody>' + rows + '</tbody></table>'
+    + '<div class="foot"><span class="pending"></span>'
+    + '<button class="pdfbtn" style="border-color:var(--muted);color:var(--muted)">Cancel</button>'
+    + '<button class="actbtn" disabled>Confirm changes</button></div>'
+  );
+  v.insertBefore(backBtn(function () { scrSections('edit'); }), v.firstChild);
+  var confirm = v.querySelector('.actbtn'), pending = v.querySelector('.pending');
+  function refresh(){
+    var n = 0;
+    v.querySelectorAll('input').forEach(function (inp) {
+      var i = +(inp.getAttribute('data-q') || inp.getAttribute('data-p'));
+      var p = s.positions[i];
+      var orig = inp.hasAttribute('data-q') ? p.qty : p.price;
+      var changed = inp.value !== '' && +inp.value !== orig;
+      inp.classList.toggle('changed', changed);
+      if (changed) n++;
+      var q = +v.querySelector('[data-q="' + i + '"]').value || 0;
+      var pr = +v.querySelector('[data-p="' + i + '"]').value || 0;
+      v.querySelector('[data-t="' + i + '"]').textContent = rp(q * pr) + ' (preview)';
+    });
+    confirm.disabled = n === 0;
+    pending.textContent = n ? n + ' changes pending' : '';
+  }
+  v.querySelectorAll('input').forEach(function (inp) { inp.oninput = refresh; });
+  confirm.onclick = function () { alert('DEMO: nothing is written. Live version: confirm → snapshot → ARCHIVE → cells → audit.'); };
+  v.querySelectorAll('.pdfbtn')[0].onclick = function () { scrSections('edit'); };
+  render(v);
+}
+
+function scrPayments(){
+  var total = P.payments.reduce(function (a, p) { return a + p.amount; }, 0);
+  var rows = P.payments.map(function (p) {
+    return '<tr><td>' + esc(p.date) + '</td><td>' + esc(p.note) + '</td>'
+      + '<td class="num money">' + rp(p.amount) + '</td></tr>';
+  }).join('');
+  var v = el(
+    head(P.name, 'Payments (view)')
+    + '<table><thead><tr><th>Date</th><th>Note</th><th class="num">Amount</th></tr></thead>'
+    + '<tbody>' + rows
+    + '<tr class="totalrow"><td>TOTAL PAID</td><td></td><td class="num">' + rp(total) + '</td></tr>'
+    + '</tbody></table>'
+    + '<p class="note">Read only &mdash; payments are entered manually in the sheet.</p>'
+  );
+  v.insertBefore(backBtn(scrMenu), v.firstChild);
+  render(v);
+}
+
+function scrRollback(){
+  var cards = P.snapshots.map(function (s, i) {
+    return '<div class="card" data-i="' + i + '"><div class="t">' + esc(s.date) + '</div>'
+      + '<div class="m">' + esc(s.label) + ' &middot; ' + s.cells + ' cells</div></div>';
+  }).join('');
+  var v = el(
+    head(P.name, 'Emergency rollback', true)
+    + '<div class="caps" style="margin-bottom:10px">Select a snapshot to restore</div>'
+    + cards
+    + '<div class="foot"><span></span><button class="actbtn flag" disabled>&#9888; Restore selected version</button></div>'
+    + '<p class="note">Restore writes through ARCHIVE and audit log. Text command in chat stays available.</p>'
+  );
+  v.insertBefore(backBtn(scrMenu), v.firstChild);
+  var btn = v.querySelector('.actbtn'), sel = -1;
+  v.querySelectorAll('.card').forEach(function (c) {
+    c.onclick = function () {
+      v.querySelectorAll('.card').forEach(function (x) { x.classList.remove('sel'); });
+      c.classList.add('sel'); sel = +c.getAttribute('data-i'); btn.disabled = false;
+    };
+  });
+  btn.onclick = function () { alert('DEMO: nothing is restored. Live version: existing KEVIN rollback chain (pending_restore).'); };
+  render(v);
+}
+
+function scrRefresh(){
+  var pos = P.sections.reduce(function (a, s) { return a + s.positions.length; }, 0);
+  var v = el(
+    head(P.name, 'Structure refresh')
+    + '<div class="bigok">Structure refreshed</div>'
+    + '<div class="kpi" style="max-width:340px">'
+    + '<div><div class="k">Sections</div><div class="v">' + P.sections.length + '</div></div>'
+    + '<div><div class="k">Positions</div><div class="v">' + pos + '</div></div>'
+    + '</div>'
+    + '<p class="note">Also runs automatically every night. Use Refresh only after manual edits of the sheet file.</p>'
+  );
+  v.insertBefore(backBtn(scrMenu), v.firstChild);
+  render(v);
+}
+
+scrMenu();
 </script>
 </body>
 </html>
