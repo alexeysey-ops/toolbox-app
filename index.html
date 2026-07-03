@@ -120,7 +120,8 @@ DEMO.sections.forEach(function (s) {
 var P = DEMO;
 
 /* ============ helpers ============ */
-function rp(n){ return 'Rp ' + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+function rp(n){ if (n === null || n === undefined || isNaN(n)) return '—'; return 'Rp ' + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+function pct(v){ return (v === null || v === undefined) ? '—' : v + '%'; }
 function el(html){ var d = document.createElement('div'); d.innerHTML = html; return d; }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 var SCREEN = document.getElementById('screen');
@@ -173,12 +174,12 @@ function scrSections(mode){
   var rows = P.sections.map(function (s, i) {
     if (mode === 'sitecheck') {
       return '<tr class="rowlink" data-i="' + i + '"><td>' + esc(s.name)
-        + '<div class="bar"><i style="width:' + s.done + '%"></i></div></td>'
-        + '<td class="num" style="color:var(--faint);font-size:11px">done ' + s.done + '%</td></tr>';
+        + '<div class="bar"><i style="width:' + (s.done || 0) + '%"></i></div></td>'
+        + '<td class="num" style="color:var(--faint);font-size:11px">done ' + pct(s.done) + '</td></tr>';
     }
     return '<tr class="rowlink" data-i="' + i + '"><td>' + esc(s.name)
-      + '<div class="bar"><i style="width:' + s.done + '%"></i></div>'
-      + '<div class="meta">done ' + s.done + '%</div></td>'
+      + '<div class="bar"><i style="width:' + (s.done || 0) + '%"></i></div>'
+      + '<div class="meta">done ' + pct(s.done) + '</div></td>'
       + '<td class="num money">' + rp(s.total) + '</td></tr>';
   }).join('');
   var total = P.sections.reduce(function (a, s) { return a + s.total; }, 0);
@@ -206,7 +207,7 @@ function scrSections(mode){
 function scrDetail(s){
   var rows = s.positions.map(function (p) {
     return '<tr><td>' + esc(p.desc) + ' <span class="code">' + esc(p.code) + '</span>'
-      + '<div class="meta">unit price ' + rp(p.price) + ' &middot; done ' + p.done + '%</div></td>'
+      + '<div class="meta">unit price ' + rp(p.price) + ' &middot; done ' + pct(p.done) + '</div></td>'
       + '<td class="num">' + p.qty + ' ' + esc(p.unit) + '</td>'
       + '<td class="num money">' + rp(p.total) + '</td></tr>';
   }).join('');
@@ -227,7 +228,7 @@ function scrSiteCheck(s){
   var rows = s.positions.map(function (p, i) {
     return '<tr><td>' + esc(p.desc) + ' <span class="code">' + esc(p.code) + '</span></td>'
       + '<td class="num">' + p.qty + ' ' + esc(p.unit) + '</td>'
-      + '<td class="num" style="color:var(--faint)">' + p.done + '%</td>'
+      + '<td class="num" style="color:var(--faint)">' + pct(p.done) + '</td>'
       + '<td class="num"><input class="pct" type="number" min="0" max="100" inputmode="numeric" placeholder="&mdash;" data-i="' + i + '"></td></tr>';
   }).join('');
   var v = el(
@@ -355,7 +356,42 @@ function scrRefresh(){
   render(v);
 }
 
-scrMenu();
+/* ============ boot: live data via webhook, demo fallback ============ */
+var API_URL = 'https://alfred-mishkin.app.n8n.cloud/webhook/app-api';
+function boot(){
+  var wantLive = ROUTE && ROUTE !== 'demo' && WA && WA.initData && WA.initData.length > 0;
+  if (!wantLive) { scrMenu(); return; }
+  SCREEN.innerHTML = '<div class="topbar"><div class="brand">E N K I</div><h1>Loading&hellip;</h1><div class="sub">Fetching data from Alfred</div></div>';
+  fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ initData: WA.initData, route: ROUTE, params: {} })
+  })
+  .then(function (r) { return r.json(); })
+  .then(function (j) {
+    if (!j || !j.ok) throw new Error((j && (String(j.error || 'error') + (j.reason ? ' / ' + j.reason : '') + (j.detail ? ' / ' + j.detail : ''))) || 'unknown');
+    P = {
+      name: j.project || ROUTE, route: j.route, demo: false,
+      budget: j.budget, paid: j.paid, payments: [], snapshots: [],
+      sections: (j.sections || []).map(function (s) {
+        return { id: s.name, name: s.name, total: s.total || 0, doneRp: s.done_rp || 0, done: s.done_pct,
+          positions: (s.positions || []).map(function (p) {
+            return { code: p.code, desc: p.desc, qty: p.qty, unit: p.unit || '', price: p.price, total: p.total || 0, done: p.done_pct };
+          }) };
+      })
+    };
+    scrMenu();
+  })
+  .catch(function (e) {
+    SCREEN.innerHTML = '';
+    var v = el(head('Connection error', 'Could not load live data', true)
+      + '<p class="note">' + esc(String((e && e.message) || e)) + '</p>'
+      + '<button class="btn" id="demo">Open demo instead</button>');
+    v.querySelector('#demo').onclick = function () { P = DEMO; scrMenu(); };
+    SCREEN.appendChild(v);
+  });
+}
+boot();
 </script>
 </body>
 </html>
