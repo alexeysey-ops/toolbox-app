@@ -355,19 +355,40 @@ function scrRollback(){
   render(v);
 }
 
-function scrRefresh(){
-  var pos = P.sections.reduce(function (a, s) { return a + s.positions.length; }, 0);
+function refreshResult(sec, pos, note){
   var v = el(
     head(P.name, 'Structure refresh')
     + '<div class="bigok">Structure refreshed</div>'
     + '<div class="kpi" style="max-width:340px">'
-    + '<div><div class="k">Sections</div><div class="v">' + P.sections.length + '</div></div>'
+    + '<div><div class="k">Sections</div><div class="v">' + sec + '</div></div>'
     + '<div><div class="k">Positions</div><div class="v">' + pos + '</div></div>'
     + '</div>'
-    + '<p class="note">Also runs automatically every night. Use Refresh only after manual edits of the sheet file.</p>'
+    + '<p class="note">' + note + '</p>'
   );
   v.insertBefore(backBtn(scrMenu), v.firstChild);
   render(v);
+}
+function scrRefresh(){
+  if (P.demo) {
+    var pos = P.sections.reduce(function (a, s) { return a + s.positions.length; }, 0);
+    refreshResult(P.sections.length, pos, 'DEMO. Live: rebuilds the map from the current sheet, runs nightly too.');
+    return;
+  }
+  SCREEN.innerHTML = '<div class="topbar"><div class="brand">ENKI &amp; GEDE BAGUS &middot; BALI</div><h1>Refreshing&hellip;</h1><div class="sub">Rebuilding structure from the sheet</div></div>';
+  api('app_map_refresh').then(function (j) {
+    if (!j || !j.ok) throw new Error((j && (j.error || 'error')) || 'error');
+    var sec = j.sections, pos = j.positions;
+    var skips = (j.skipped && j.skipped.length) ? ' &middot; skipped: ' + j.skipped.map(esc).join(', ') : '';
+    return api('app_smeta_read').then(function (s) {
+      if (s && s.ok) applySmeta(s);
+      refreshResult(sec, pos, 'Structure rebuilt from the current sheet. Marked (#) and hidden sheets are excluded.' + skips);
+    });
+  }).catch(function (e) {
+    SCREEN.innerHTML = '';
+    var v = el(head(P.name, 'Refresh failed', true) + '<p class="note">' + esc(String((e && e.message) || e)) + '</p>');
+    v.insertBefore(backBtn(scrMenu), v.firstChild);
+    SCREEN.appendChild(v);
+  });
 }
 
 /* ============ trello tasks ============ */
@@ -438,6 +459,15 @@ function scrTasks(filter){
 
 /* ============ boot: live data via webhook, demo fallback ============ */
 var API_URL = 'https://alfred-mishkin.app.n8n.cloud/webhook/app-api';
+function applySmeta(j){
+  P.budget = j.budget; P.paid = j.paid;
+  P.sections = (j.sections || []).map(function (s) {
+    return { id: s.name, name: s.name, total: s.total || 0, doneRp: s.done_rp || 0, done: s.done_pct,
+      positions: (s.positions || []).map(function (p) {
+        return { code: p.code, desc: p.desc, qty: p.qty, unit: p.unit || '', price: p.price, total: p.total || 0, done: p.done_pct };
+      }) };
+  });
+}
 function boot(){
   var wantLive = ROUTE && ROUTE !== 'demo' && WA && WA.initData && WA.initData.length > 0;
   if (!wantLive) { scrMenu(); return; }
@@ -450,16 +480,8 @@ function boot(){
   .then(function (r) { return r.json(); })
   .then(function (j) {
     if (!j || !j.ok) throw new Error((j && (String(j.error || 'error') + (j.reason ? ' / ' + j.reason : '') + (j.detail ? ' / ' + j.detail : ''))) || 'unknown');
-    P = {
-      name: j.project || ROUTE, route: j.route, demo: false,
-      budget: j.budget, paid: j.paid, payments: [], snapshots: [],
-      sections: (j.sections || []).map(function (s) {
-        return { id: s.name, name: s.name, total: s.total || 0, doneRp: s.done_rp || 0, done: s.done_pct,
-          positions: (s.positions || []).map(function (p) {
-            return { code: p.code, desc: p.desc, qty: p.qty, unit: p.unit || '', price: p.price, total: p.total || 0, done: p.done_pct };
-          }) };
-      })
-    };
+    P = { name: j.project || ROUTE, route: j.route, demo: false, payments: [], snapshots: [], tasks: null };
+    applySmeta(j);
     scrMenu();
   })
   .catch(function (e) {
