@@ -509,8 +509,26 @@ function applySmeta(j){
       }) };
   });
 }
+var PROJECTS = [
+  { route: 'reimagined_sayan', name: 'Reimagined Sayan' },
+  { route: 'karina_jimbaran', name: 'Karina Jimbaran' },
+  { route: 'dreamland_pecatu', name: 'Dreamland Pecatu' },
+  { route: 'yin_yan_batu_bolong', name: 'Yin Yan Batu Bolong' }
+];
+function scrPickProject(){
+  var v = el(
+    '<div class="topbar"><div class="brand">ENKI &amp; GEDE BAGUS &middot; BALI</div><h1>Choose project</h1><div class="sub">Select a construction project</div></div>'
+    + PROJECTS.map(function (p) { return '<button class="btn" data-r="' + p.route + '">' + esc(p.name) + '</button>'; }).join('')
+  );
+  v.querySelectorAll('[data-r]').forEach(function (b) {
+    b.onclick = function () { ROUTE = b.getAttribute('data-r'); boot(); };
+  });
+  render(v);
+}
 function boot(){
-  var wantLive = ROUTE && ROUTE !== 'demo' && WA && WA.initData && WA.initData.length > 0;
+  var hasTg = WA && WA.initData && WA.initData.length > 0;
+  if (!ROUTE && hasTg) { scrPickProject(); return; }
+  var wantLive = ROUTE && ROUTE !== 'demo' && hasTg;
   if (!wantLive) { scrMenu(); return; }
   SCREEN.innerHTML = '<div class="topbar"><div class="brand">ENKI &amp; GEDE BAGUS &middot; BALI</div><h1>Loading&hellip;</h1><div class="sub">Fetching data from Alfred</div></div>';
   var status = 0;
