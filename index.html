@@ -174,13 +174,22 @@ function scrMenu(){
   var doneRp = 0, total = 0;
   P.sections.forEach(function (s) { doneRp += s.doneRp; total += s.total; });
   if (P.doneRpTotal !== null && P.doneRpTotal !== undefined) doneRp = P.doneRpTotal;
+  var budget = P.budget || 0, paid = P.paid || 0;
+  var gap = paid - doneRp;
+  var big = Math.max(paid, doneRp, 1);
+  var flag = Math.abs(gap) > 0.2 * big && Math.abs(gap) >= 50000000;
+  var gapPct = Math.round(Math.abs(gap) / big * 100);
+  var paidV = '<div class="v"' + (flag && gap > 0 ? ' style="color:var(--flag)"' : '') + '>' + rp(paid) + '</div>';
+  var doneV = '<div class="v"' + (flag && gap < 0 ? ' style="color:var(--flag)"' : '') + '>' + rp(doneRp) + '</div>';
+  var lightNote = flag ? '<p class="note" style="color:var(--flag)">&#9888; ' + (gap > 0 ? 'Paid ahead of done by ' + rp(gap) : 'Done ahead of paid by ' + rp(-gap)) + ' (' + gapPct + '%)</p>' : '';
   var v = el(
     hdr(P.name, 'Bill of Quantities (read only)')
     + '<div class="kpi">'
-    + '<div><div class="k">Budget</div><div class="v">' + rp(P.budget) + '</div></div>'
-    + '<div><div class="k">Paid</div><div class="v">' + rp(P.paid) + '</div></div>'
-    + '<div><div class="k">Done</div><div class="v">' + rp(doneRp) + '</div></div>'
+    + '<div><div class="k">Budget</div><div class="v">' + rp(budget) + '</div></div>'
+    + '<div><div class="k">Paid</div>' + paidV + '</div>'
+    + '<div><div class="k">Done</div>' + doneV + '</div>'
     + '</div>'
+    + lightNote
     + '<button class="btn primary" data-a="summary">Project summary</button>'
     + '<button class="btn" data-a="tasks" style="display:flex;justify-content:space-between"><span>Project tasks</span><span style="font-size:11px;color:var(--faint)">' + (P.tasks ? P.tasks.length + '' : '') + '</span></button>'
     + '<button class="btn" data-a="sitecheck">Site check</button>'
