@@ -260,14 +260,16 @@ function matchSummaryToSheets(){
 
 function scrSiteCheckList(){
   var m = matchSummaryToSheets();
-  var dot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--flag);margin-right:7px;vertical-align:1px"></span>';
+  function dotc(color){ return '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + color + ';margin-right:7px;vertical-align:1px"></span>'; }
+  var C_GREEN = '#16a34a', C_GREY = 'var(--faint)';
+  var dot = dotc(C_GREY);
   var rows = P.summaryRows.map(function (r, idx) {
     if (r.k === 't') return '';
     if (r.k === 's') return '<tr><td colspan="2" style="font-weight:700;color:var(--ink);padding-top:16px">' + esc(r.name) + '</td></tr>';
     var donePct = (r.done !== null && r.done !== undefined && r.total) ? Math.round(100 * r.done / r.total) : null;
     var si = m.map[idx];
     if (si >= 0) {
-      return '<tr class="rowlink" data-i="' + si + '"><td>' + dot + esc(r.name)
+      return '<tr class="rowlink" data-i="' + si + '"><td>' + dotc(r.lock === false ? C_GREEN : C_GREY) + esc(r.name)
         + '<div class="bar"><i style="width:' + (donePct || 0) + '%"></i></div></td>'
         + '<td class="num" style="color:var(--faint);font-size:11px">done ' + pct(donePct) + '</td></tr>';
     }
@@ -283,7 +285,7 @@ function scrSiteCheckList(){
   }).join('');
   if (extraRows) extraRows = '<tr><td colspan="2" style="font-weight:700;color:var(--ink);padding-top:16px">SHEETS NOT ON SUMMARY PAGE</td></tr>' + extraRows;
   var v = el(
-    hdr(P.name, 'Site check &middot; ' + dot + 'has detail sheet &mdash; tap to check')
+    hdr(P.name, 'Site check &middot; ' + dotc(C_GREEN) + 'editable &nbsp;' + dotc(C_GREY) + 'locked &middot; no dot = manual')
     + '<table><thead><tr><th>Section</th><th class="num"></th></tr></thead>'
     + '<tbody>' + rows + extraRows + '</tbody></table>'
     + '<div class="foot"><span></span><button class="pdfbtn anbtn">Analytics</button></div>'
