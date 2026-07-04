@@ -273,8 +273,13 @@ function scrSiteCheckList(){
         + '<div class="bar"><i style="width:' + (donePct || 0) + '%"></i></div></td>'
         + '<td class="num" style="color:var(--faint);font-size:11px">done ' + pct(donePct) + '</td></tr>';
     }
+    if (r.lock === false) {
+      return '<tr><td>' + dotc(C_GREEN) + nm(r.name, false)
+        + '<div class="meta">prev ' + pct(donePct) + '</div></td>'
+        + '<td class="num"><input class="spct" type="number" min="0" max="100" inputmode="numeric" placeholder="&mdash;" data-no="' + esc(String(r.no)) + '" data-prev="' + (donePct == null ? '' : donePct) + '"></td></tr>';
+    }
     return '<tr><td>' + dotc(C_GREY) + nm(r.name, false)
-      + '<div class="meta">no sheet &mdash; % on summary</div></td>'
+      + '<div class="meta">locked &mdash; % on summary</div></td>'
       + '<td class="num" style="color:var(--faint);font-size:11px">done ' + pct(donePct) + '</td></tr>';
   }).join('');
   var extraRows = m.extra.map(function (si) {
@@ -286,15 +291,52 @@ function scrSiteCheckList(){
   if (extraRows) extraRows = '<tr><td colspan="2" style="font-weight:700;color:var(--ink);padding-top:16px">SHEETS NOT ON SUMMARY PAGE</td></tr>' + extraRows;
   var v = el(
     hdr(P.name, 'Site check &middot; ' + dotc(C_GREEN) + 'open &nbsp;' + dotc(C_GREY) + 'locked &middot; <span style="color:' + C_BLUE + '">blue</span> = tap to open')
-    + '<table><thead><tr><th>Section</th><th class="num"></th></tr></thead>'
+    + '<table><thead><tr><th>Section</th><th class="num">New %</th></tr></thead>'
     + '<tbody>' + rows + extraRows + '</tbody></table>'
-    + '<div class="foot"><span></span><button class="pdfbtn anbtn">Analytics</button></div>'
+    + '<div class="foot"><button class="actbtn" disabled>Save % &rarr; Works Done</button><button class="pdfbtn anbtn">Analytics</button></div>'
   );
   v.insertBefore(backBtn(scrMenu), v.firstChild);
   v.querySelectorAll('.rowlink').forEach(function (r) {
     r.onclick = function () { scrSiteCheck(P.sections[+r.getAttribute('data-i')]); };
   });
   v.querySelector('.anbtn').onclick = function () { scrAnalytics('sitecheck'); };
+  var sinputs = v.querySelectorAll('input.spct');
+  var save = v.querySelector('.actbtn');
+  function refreshSave(){
+    var n = 0;
+    sinputs.forEach(function (inp) {
+      var prev = inp.getAttribute('data-prev');
+      var changed = inp.value !== '' && +inp.value !== (prev === '' ? -1 : +prev);
+      inp.classList.toggle('changed', changed);
+      if (changed) n++;
+    });
+    save.disabled = n === 0;
+    save.textContent = n ? 'Save ' + n + ' → Works Done' : 'Save % → Works Done';
+  }
+  sinputs.forEach(function (inp) { inp.oninput = refreshSave; });
+  save.onclick = function () {
+    var changes = [];
+    sinputs.forEach(function (inp) {
+      var prev = inp.getAttribute('data-prev');
+      if (inp.value !== '' && +inp.value !== (prev === '' ? -1 : +prev)) changes.push({ no: inp.getAttribute('data-no'), pct: +inp.value });
+    });
+    if (!changes.length) return;
+    if (P.demo) { alert('DEMO: nothing is written.'); return; }
+    save.disabled = true; save.textContent = 'Saving…';
+    api('app_sitecheck_write', { summary_changes: changes, dry_run: false }).then(function (j) {
+      if (!j || !j.ok) throw new Error((j && j.error) || 'error');
+      var msg = [];
+      if (j.count > 0) msg.push('✓ Saved ' + j.count + ' to Works Done.');
+      if (j.locked && j.locked.length) msg.push('🔒 Locked: ' + j.locked.join(', '));
+      if (j.missing && j.missing.length) msg.push('⚠ Cannot write: ' + j.missing.join(', '));
+      try { if (WA && WA.HapticFeedback && j.count > 0) WA.HapticFeedback.notificationOccurred('success'); } catch (e) {}
+      alert(msg.join('\n') || 'Nothing changed.');
+      if (j.count > 0) boot(); else { save.disabled = false; refreshSave(); }
+    }).catch(function (e) {
+      alert('Save failed: ' + ((e && e.message) || e));
+      save.disabled = false; refreshSave();
+    });
+  };
   render(v);
 }
 
