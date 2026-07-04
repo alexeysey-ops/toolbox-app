@@ -141,7 +141,7 @@ function showFatal(msg){ try { SCREEN.innerHTML = '<div style="padding:16px 14px
 window.addEventListener('error', function (ev) { showFatal('JS error: ' + ((ev.error && (ev.error.stack || ev.error.message)) || ev.message || 'unknown') + '\n@ ' + (ev.filename || '') + ':' + (ev.lineno || '')); });
 window.addEventListener('unhandledrejection', function (ev) { var r = ev.reason; showFatal('Promise rejected: ' + ((r && (r.stack || r.message)) || String(r))); });
 function render(node){ try { SCREEN.innerHTML = ''; SCREEN.appendChild(node); if (window.scrollTo) window.scrollTo(0, 0); } catch (e) { showFatal('render: ' + (e.stack || e.message)); } }
-function head(title, sub, flag){
+function hdr(title, sub, flag){
   return '<div class="topbar' + (flag ? ' flag' : '') + '">'
     + '<div class="brand">ENKI &amp; GEDE BAGUS &middot; BALI</div>'
     + '<h1>' + esc(title) + '</h1>'
@@ -155,7 +155,7 @@ function scrMenu(){
   var doneRp = 0, total = 0;
   P.sections.forEach(function (s) { doneRp += s.doneRp; total += s.total; });
   var v = el(
-    head(P.name, 'Bill of Quantities (read only)')
+    hdr(P.name, 'Bill of Quantities (read only)')
     + '<div class="kpi">'
     + '<div><div class="k">Budget</div><div class="v">' + rp(P.budget) + '</div></div>'
     + '<div><div class="k">Paid</div><div class="v">' + rp(P.paid) + '</div></div>'
@@ -203,7 +203,7 @@ function scrSections(mode){
   var totalRow = (mode === 'sitecheck') ? '' :
     '<tr class="totalrow"><td>PROJECT TOTAL</td><td class="num">' + rp(total) + '</td></tr>';
   var v = el(
-    head(P.name, titles[mode] + ' · ' + subs[mode], mode === 'edit')
+    hdr(P.name, titles[mode] + ' · ' + subs[mode], mode === 'edit')
     + '<table><thead><tr><th>Section</th><th class="num">' + (mode === 'sitecheck' ? '' : 'Total') + '</th></tr></thead>'
     + '<tbody>' + rows + totalRow + '</tbody></table>'
     + (mode === 'summary' ? '<div class="foot"><button class="pdfbtn">PDF</button><button class="pdfbtn anbtn">Analytics</button></div>'
@@ -231,7 +231,7 @@ function scrDetail(s){
       + '<td class="num money">' + rp(p.total) + '</td></tr>';
   }).join('');
   var v = el(
-    head(s.name, 'Section detail · Read only')
+    hdr(s.name, 'Section detail · Read only')
     + '<table><thead><tr><th>Position</th><th class="num">Qty</th><th class="num">Total</th></tr></thead>'
     + '<tbody>' + rows
     + '<tr class="totalrow"><td>SECTION TOTAL</td><td></td><td class="num">' + rp(s.total) + '</td></tr>'
@@ -251,7 +251,7 @@ function scrSiteCheck(s){
       + '<td class="num"><input class="pct" type="number" min="0" max="100" inputmode="numeric" placeholder="&mdash;" data-i="' + i + '"></td></tr>';
   }).join('');
   var v = el(
-    head(s.name, 'Site check · enter NEW % only')
+    hdr(s.name, 'Site check · enter NEW % only')
     + '<table><thead><tr><th>Position</th><th class="num">Qty</th><th class="num">Prev</th><th class="num">New %</th></tr></thead>'
     + '<tbody>' + rows + '</tbody></table>'
     + '<div class="foot"><button class="pdfbtn">PDF</button>'
@@ -287,7 +287,7 @@ function scrEdit(s){
       + '<td class="num"><input class="price" type="number" inputmode="numeric" value="' + p.price + '" data-p="' + i + '"></td></tr>';
   }).join('');
   var v = el(
-    head(s.name, '<span style="color:var(--flag)">(edit)</span> qty &middot; unit price', true)
+    hdr(s.name, '<span style="color:var(--flag)">(edit)</span> qty &middot; unit price', true)
     + '<table><thead><tr><th>Position</th><th class="num">Qty</th><th class="num">Unit price</th></tr></thead>'
     + '<tbody>' + rows + '</tbody></table>'
     + '<div class="foot"><span class="pending"></span>'
@@ -325,7 +325,7 @@ function scrPayments(){
       + '<td class="num money">' + rp(p.amount) + '</td></tr>';
   }).join('');
   var v = el(
-    head(P.name, 'Payments (view)')
+    hdr(P.name, 'Payments (view)')
     + '<table><thead><tr><th>Date</th><th>Note</th><th class="num">Amount</th></tr></thead>'
     + '<tbody>' + rows
     + '<tr class="totalrow"><td>TOTAL PAID</td><td></td><td class="num">' + rp(total) + '</td></tr>'
@@ -342,7 +342,7 @@ function scrRollback(){
       + '<div class="m">' + esc(s.label) + ' &middot; ' + s.cells + ' cells</div></div>';
   }).join('');
   var v = el(
-    head(P.name, 'Emergency rollback', true)
+    hdr(P.name, 'Emergency rollback', true)
     + '<div class="caps" style="margin-bottom:10px">Select a snapshot to restore</div>'
     + cards
     + '<div class="foot"><span></span><button class="actbtn flag" disabled>&#9888; Restore selected version</button></div>'
@@ -362,7 +362,7 @@ function scrRollback(){
 
 function refreshResult(sec, pos, note){
   var v = el(
-    head(P.name, 'Structure refresh')
+    hdr(P.name, 'Structure refresh')
     + '<div class="bigok">Structure refreshed</div>'
     + '<div class="kpi" style="max-width:340px">'
     + '<div><div class="k">Sections</div><div class="v">' + sec + '</div></div>'
@@ -382,7 +382,7 @@ function scrRefresh(){
   SCREEN.innerHTML = '<div class="topbar"><div class="brand">ENKI &amp; GEDE BAGUS &middot; BALI</div><h1>Refreshing&hellip;</h1><div class="sub">Rebuilding structure from the sheet</div></div>';
   api('app_map_refresh').then(function (j) {
     if (j && !j.ok && j.error === 'manual_map') {
-      var vm = el(head(P.name, 'Manual map') + '<p class="note">This project uses a hand-built map and is not auto-rebuilt. Ask Alfred if it needs updating.</p>');
+      var vm = el(hdr(P.name, 'Manual map') + '<p class="note">This project uses a hand-built map and is not auto-rebuilt. Ask Alfred if it needs updating.</p>');
       vm.insertBefore(backBtn(scrMenu), vm.firstChild);
       render(vm);
       return;
@@ -396,7 +396,7 @@ function scrRefresh(){
     });
   }).catch(function (e) {
     SCREEN.innerHTML = '';
-    var v = el(head(P.name, 'Refresh failed', true) + '<p class="note">' + esc(String((e && e.message) || e)) + '</p>');
+    var v = el(hdr(P.name, 'Refresh failed', true) + '<p class="note">' + esc(String((e && e.message) || e)) + '</p>');
     v.insertBefore(backBtn(scrMenu), v.firstChild);
     SCREEN.appendChild(v);
   });
@@ -425,7 +425,7 @@ function scrTasks(filter){
         scrTasks(filter);
       }).catch(function (e) {
         SCREEN.innerHTML = '';
-        var v = el(head('Connection error', 'Could not load tasks', true)
+        var v = el(hdr('Connection error', 'Could not load tasks', true)
           + '<p class="note">' + esc(String((e && e.message) || e)) + '</p>');
         v.insertBefore(backBtn(scrMenu), v.firstChild);
         SCREEN.appendChild(v);
@@ -455,7 +455,7 @@ function scrTasks(filter){
   }).join('');
   if (!shown.length) rows = '<p class="note">No tasks here.</p>';
   var v = el(
-    head('Project tasks', esc(P.name) + ' &middot; read only')
+    hdr('Project tasks', esc(P.name) + ' &middot; read only')
     + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">' + chips + '</div>'
     + rows
     + '<div class="foot"><button class="pdfbtn">PDF</button><button class="pdfbtn anbtn">Analytics</button></div>'
@@ -474,7 +474,7 @@ function scrAnalytics(context){
   var titles = { summary: 'Budget analytics', sitecheck: 'Progress analytics', tasks: 'Task analytics' };
   var title = titles[context] || 'Analytics';
   if (P.demo) {
-    var v0 = el(head(P.name, title + ' &middot; by Kevin')
+    var v0 = el(hdr(P.name, title + ' &middot; by Kevin')
       + '<p class="note">DEMO. Live: Kevin reads the ' + esc(context) + ' and writes a short analysis here.</p>');
     v0.insertBefore(backBtn(scrMenu), v0.firstChild);
     render(v0);
@@ -485,14 +485,14 @@ function scrAnalytics(context){
     if (!j || !j.ok) throw new Error((j && (j.error || 'error')) || 'error');
     var kpiHtml = (j.kpis && j.kpis.length) ? '<div class="kpi">' + j.kpis.map(function (x) { return '<div><div class="k">' + esc(x.k) + '</div><div class="v">' + esc(x.v) + '</div></div>'; }).join('') + '</div>' : '';
     var body = '<div style="font-family:var(--serif);font-size:14px;line-height:1.65;color:var(--ink);white-space:pre-wrap;margin-top:14px">' + esc(j.text) + '</div>';
-    var v = el(head(P.name, title + ' &middot; by Kevin') + kpiHtml + body
+    var v = el(hdr(P.name, title + ' &middot; by Kevin') + kpiHtml + body
       + '<div class="foot"><span></span><button class="pdfbtn anbtn">&#8635; Re-run</button></div>');
     v.insertBefore(backBtn(scrMenu), v.firstChild);
     v.querySelector('.anbtn').onclick = function () { scrAnalytics(context); };
     render(v);
   }).catch(function (e) {
     SCREEN.innerHTML = '';
-    var v = el(head(P.name, 'Analytics failed', true) + '<p class="note">' + esc(String((e && e.message) || e)) + '</p>');
+    var v = el(hdr(P.name, 'Analytics failed', true) + '<p class="note">' + esc(String((e && e.message) || e)) + '</p>');
     v.insertBefore(backBtn(scrMenu), v.firstChild);
     SCREEN.appendChild(v);
   });
