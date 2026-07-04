@@ -513,25 +513,23 @@ function boot(){
   var wantLive = ROUTE && ROUTE !== 'demo' && WA && WA.initData && WA.initData.length > 0;
   if (!wantLive) { scrMenu(); return; }
   SCREEN.innerHTML = '<div class="topbar"><div class="brand">ENKI &amp; GEDE BAGUS &middot; BALI</div><h1>Loading&hellip;</h1><div class="sub">Fetching data from Alfred</div></div>';
+  var status = 0;
   fetch(API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ initData: WA.initData, route: ROUTE, params: {} })
+    body: JSON.stringify({ initData: (WA && WA.initData) || '', route: ROUTE, params: {} })
   })
-  .then(function (r) { return r.json(); })
-  .then(function (j) {
-    if (!j || !j.ok) throw new Error((j && (String(j.error || 'error') + (j.reason ? ' / ' + j.reason : '') + (j.detail ? ' / ' + j.detail : ''))) || 'unknown');
+  .then(function (r) { status = r.status; return r.text(); })
+  .then(function (txt) {
+    var j = null;
+    try { j = JSON.parse(txt); } catch (pe) { throw new Error('HTTP ' + status + ' — not JSON: ' + String(txt).slice(0, 200)); }
+    if (!j || !j.ok) throw new Error('HTTP ' + status + ' — ' + (j && (j.error || 'error')) + (j && j.reason ? ' / ' + j.reason : '') + (j && j.detail ? ' / ' + j.detail : ''));
     P = { name: j.project || ROUTE, route: j.route, demo: false, payments: [], snapshots: [], tasks: null };
     applySmeta(j);
     scrMenu();
   })
   .catch(function (e) {
-    SCREEN.innerHTML = '';
-    var v = el(head('Connection error', 'Could not load live data', true)
-      + '<p class="note">' + esc(String((e && e.message) || e)) + '</p>'
-      + '<button class="btn" id="demo">Open demo instead</button>');
-    v.querySelector('#demo').onclick = function () { P = DEMO; scrMenu(); };
-    SCREEN.appendChild(v);
+    showFatal('Load failed:\n' + ((e && (e.message || e.stack)) || String(e)) + '\n\nroute=' + ROUTE + '\ninitData len=' + ((WA && WA.initData && WA.initData.length) || 0));
   });
 }
 boot();
