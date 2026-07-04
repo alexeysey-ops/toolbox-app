@@ -388,7 +388,27 @@ function scrSiteCheck(s){
   }
   inputs.forEach(function (inp) { inp.oninput = refresh; });
   save.onclick = function () {
-    alert('DEMO: nothing is written. Live version: snapshot → ARCHIVE → Works Done cells → audit log.');
+    var changes = [];
+    inputs.forEach(function (inp) {
+      var p = s.positions[+inp.getAttribute('data-i')];
+      if (inp.value !== '' && +inp.value !== p.done) changes.push({ code: p.code, pct: +inp.value });
+    });
+    if (!changes.length) return;
+    if (P.demo) { alert('DEMO: nothing is written.'); return; }
+    save.disabled = true; save.textContent = 'Saving…';
+    api('app_sitecheck_write', { changes: changes, dry_run: false }).then(function (j) {
+      if (!j || !j.ok) throw new Error((j && j.error) || 'error');
+      var msg = [];
+      if (j.count > 0) msg.push('✓ Saved ' + j.count + ' to Works Done.');
+      if (j.locked && j.locked.length) msg.push('🔒 Locked, not saved: ' + j.locked.join(', ') + '. Unlock the section on the summary sheet, then Refresh.');
+      if (j.missing && j.missing.length) msg.push('⚠ No Works Done column: ' + j.missing.join(', ') + '.');
+      try { if (WA && WA.HapticFeedback && j.count > 0) WA.HapticFeedback.notificationOccurred('success'); } catch (e) {}
+      alert(msg.join('\n') || 'Nothing changed.');
+      if (j.count > 0) { boot(); } else { save.disabled = false; refresh(); }
+    }).catch(function (e) {
+      alert('Save failed: ' + ((e && e.message) || e));
+      save.disabled = false; refresh();
+    });
   };
   v.querySelector('.pdfbtn').onclick = function () { sendPdf(this); };
   render(v);
