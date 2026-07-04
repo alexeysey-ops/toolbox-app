@@ -154,6 +154,7 @@ function pdfStub(kind){ alert('PDF export (' + kind + ') will be wired to the ex
 function scrMenu(){
   var doneRp = 0, total = 0;
   P.sections.forEach(function (s) { doneRp += s.doneRp; total += s.total; });
+  if (P.doneRpTotal !== null && P.doneRpTotal !== undefined) doneRp = P.doneRpTotal;
   var v = el(
     hdr(P.name, 'Bill of Quantities (read only)')
     + '<div class="kpi">'
@@ -185,7 +186,39 @@ function scrMenu(){
   render(v);
 }
 
+function scrSummarySheet(){
+  var rows = P.summaryRows.map(function (r) {
+    if (r.k === 's') return '<tr><td colspan="2" style="font-weight:700;color:var(--ink);padding-top:16px">' + esc(r.name) + '</td></tr>';
+    if (r.k === 't') {
+      var tm = [];
+      if (r.paid !== null && r.paid !== undefined) tm.push('paid ' + rp(r.paid));
+      if (r.done !== null && r.done !== undefined) tm.push('done ' + rp(r.done));
+      return '<tr class="totalrow"><td>' + esc(r.name)
+        + (tm.length ? '<div class="meta" style="font-weight:400">' + tm.join(' &middot; ') + '</div>' : '') + '</td>'
+        + '<td class="num">' + rp(r.total) + '</td></tr>';
+    }
+    var meta = [];
+    if (r.paid !== null && r.paid !== undefined) meta.push('paid ' + rp(r.paid));
+    if (r.done !== null && r.done !== undefined) meta.push('done ' + rp(r.done));
+    if (r.note) meta.push(esc(r.note));
+    return '<tr><td>' + (r.no ? '<span class="code">' + esc(r.no) + '</span> ' : '') + esc(r.name)
+      + (meta.length ? '<div class="meta">' + meta.join(' &middot; ') + '</div>' : '') + '</td>'
+      + '<td class="num money">' + (r.total !== null && r.total !== undefined ? rp(r.total) : '') + '</td></tr>';
+  }).join('');
+  var v = el(
+    hdr(P.name, 'Project summary &middot; Summary sheet &middot; Read only')
+    + '<table><thead><tr><th>Item</th><th class="num">Total</th></tr></thead>'
+    + '<tbody>' + rows + '</tbody></table>'
+    + '<div class="foot"><button class="pdfbtn">PDF</button><button class="pdfbtn anbtn">Analytics</button></div>'
+  );
+  v.insertBefore(backBtn(scrMenu), v.firstChild);
+  v.querySelector('.pdfbtn:not(.anbtn)').onclick = function () { pdfStub('summary'); };
+  v.querySelector('.anbtn').onclick = function () { scrAnalytics('summary'); };
+  render(v);
+}
+
 function scrSections(mode){
+  if (mode === 'summary' && P.summaryRows && P.summaryRows.length) { scrSummarySheet(); return; }
   var titles = { summary: 'Project summary', sitecheck: 'Site check', edit: 'Edit prices and quantities' };
   var subs = { summary: 'Read only', sitecheck: 'Select a section — no prices shown', edit: '<span style="color:var(--flag)">Edit mode</span>' };
   var rows = P.sections.map(function (s, i) {
@@ -502,6 +535,8 @@ function scrAnalytics(context){
 var API_URL = 'https://alfred-mishkin.app.n8n.cloud/webhook/app-api';
 function applySmeta(j){
   P.budget = j.budget; P.paid = j.paid;
+  P.summaryRows = j.summary_rows || null;
+  P.doneRpTotal = (j.done_rp === undefined) ? null : j.done_rp;
   P.sections = (j.sections || []).map(function (s) {
     return { id: s.name, name: s.name, total: s.total || 0, doneRp: s.done_rp || 0, done: s.done_pct,
       positions: (s.positions || []).map(function (p) {
