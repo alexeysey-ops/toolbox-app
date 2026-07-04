@@ -501,17 +501,29 @@ function scrPayments(){
   render(v);
 }
 
+function fmtTs(ts){ try { var d = new Date(ts); if (isNaN(d.getTime())) return String(ts); return d.toLocaleString(); } catch (e) { return String(ts); } }
+function askConfirm(msg, cb){ try { if (WA && WA.showConfirm) { WA.showConfirm(msg, cb); return; } } catch (e) {} cb(window.confirm(msg)); }
 function scrRollback(){
-  var cards = P.snapshots.map(function (s, i) {
-    return '<div class="card" data-i="' + i + '"><div class="t">' + esc(s.date) + '</div>'
-      + '<div class="m">' + esc(s.label) + ' &middot; ' + s.cells + ' cells</div></div>';
-  }).join('');
+  if (P.demo) { scrRollbackList((P.snapshots || []).map(function (s) { return { ts: s.date, label: s.label }; })); return; }
+  SCREEN.innerHTML = '<div class="topbar flag"><div class="brand">ENKI &amp; GEDE BAGUS &middot; BALI</div><h1>Emergency rollback</h1><div class="sub">Loading versions&hellip;</div></div>';
+  api('app_snapshots_read', {}).then(function (j) {
+    scrRollbackList((j && j.snapshots) || []);
+  }).catch(function (e) {
+    var v = el(hdr(P.name, 'Rollback failed', true) + '<p class="note">' + esc(String((e && e.message) || e)) + '</p>');
+    v.insertBefore(backBtn(scrMenu), v.firstChild); render(v);
+  });
+}
+function scrRollbackList(snaps){
+  var cards = snaps.map(function (s, i) {
+    return '<div class="card" data-i="' + i + '"><div class="t">' + esc(fmtTs(s.ts || s.date)) + '</div>'
+      + '<div class="m">' + esc(s.label || '') + '</div></div>';
+  }).join('') || '<p class="note">No saved versions yet.</p>';
   var v = el(
     hdr(P.name, 'Emergency rollback', true)
-    + '<div class="caps" style="margin-bottom:10px">Select a snapshot to restore</div>'
+    + '<div class="caps" style="margin-bottom:10px">Select a version to restore</div>'
     + cards
     + '<div class="foot"><span></span><button class="actbtn flag" disabled>&#9888; Restore selected version</button></div>'
-    + '<p class="note">Restore writes through ARCHIVE and audit log. Text command in chat stays available.</p>'
+    + '<p class="note">Restore writes through ARCHIVE and audit log. Locked sections are not touched.</p>'
   );
   v.insertBefore(backBtn(scrMenu), v.firstChild);
   var btn = v.querySelector('.actbtn'), sel = -1;
@@ -521,7 +533,27 @@ function scrRollback(){
       c.classList.add('sel'); sel = +c.getAttribute('data-i'); btn.disabled = false;
     };
   });
-  btn.onclick = function () { alert('DEMO: nothing is restored. Live version: existing KEVIN rollback chain (pending_restore).'); };
+  btn.onclick = function () {
+    if (sel < 0) return;
+    if (P.demo) { alert('DEMO: nothing is restored.'); return; }
+    var snap = snaps[sel];
+    askConfirm('Restore version from ' + fmtTs(snap.ts) + '?\nUnlocked sections are set back to this version; locked sections stay as-is.', function (yes) {
+      if (!yes) return;
+      btn.disabled = true; btn.textContent = 'Restoring…';
+      api('app_restore', { snap_ts: snap.ts, dry_run: false }).then(function (j) {
+        if (!j || !j.ok) throw new Error((j && j.error) || 'error');
+        var msg = [];
+        if (j.count > 0) msg.push('✓ Restored ' + j.count + ' position(s).');
+        if (j.locked && j.locked.length) msg.push('🔒 ' + j.locked.length + ' locked, not touched.');
+        if (j.unchanged && j.unchanged.length) msg.push(j.unchanged.length + ' already matched.');
+        alert(msg.join('\n') || 'Nothing to restore.');
+        boot();
+      }).catch(function (e) {
+        alert('Restore failed: ' + ((e && e.message) || e));
+        btn.disabled = false; btn.textContent = '⚠ Restore selected version';
+      });
+    });
+  };
   render(v);
 }
 
