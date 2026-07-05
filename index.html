@@ -197,6 +197,7 @@ function scrMenu(){
     + '<button class="btn" data-a="payments">Payments (view)</button>'
     + '<button class="btn" data-a="refresh">&#128260; Refresh</button>'
     + '<hr class="sep">'
+    + '<button class="btn" data-a="history">&#128220; Change history</button>'
     + '<button class="btn flag" data-a="rollback">&#9888; Emergency rollback</button>'
   );
   v.querySelectorAll('[data-a]').forEach(function (b) {
@@ -208,6 +209,7 @@ function scrMenu(){
       else if (a === 'edit') scrSections('edit');
       else if (a === 'payments') scrPayments();
       else if (a === 'refresh') scrRefresh();
+      else if (a === 'history') scrHistory();
       else if (a === 'rollback') scrRollback();
     };
   });
@@ -583,6 +585,35 @@ function scrPayments(){
 
 function fmtTs(ts){ try { var d = new Date(ts); if (isNaN(d.getTime())) return String(ts); return d.toLocaleString(); } catch (e) { return String(ts); } }
 function askConfirm(msg, cb){ try { if (WA && WA.showConfirm) { WA.showConfirm(msg, cb); return; } } catch (e) {} cb(window.confirm(msg)); }
+function fmtVal(x){ var s = String(x == null ? '' : x); if (s !== '' && /^-?\d+(\.\d+)?$/.test(s)) return Number(s).toLocaleString('en-US'); return s; }
+function scrHistory(){
+  if (P.demo) { scrHistoryList([]); return; }
+  SCREEN.innerHTML = '<div class="topbar"><div class="brand">ENKI &amp; GEDE BAGUS &middot; BALI</div><h1>Change history</h1><div class="sub">Loading&hellip;</div></div>';
+  api('app_history_read', {}).then(function (j) {
+    scrHistoryList((j && j.history) || []);
+  }).catch(function (e) {
+    var v = el(hdr(P.name, 'History failed') + '<p class="note">' + esc(String((e && e.message) || e)) + '</p>');
+    v.insertBefore(backBtn(scrMenu), v.firstChild); render(v);
+  });
+}
+function scrHistoryList(items){
+  var fl = { works_done: 'done', qty: 'qty', price: 'price', name: 'name' };
+  var rows = items.map(function (h) {
+    var f = fl[h.field] || h.field || '';
+    return '<tr><td>' + esc(fmtTs(h.date)) + '<div class="meta">' + esc(h.source || '') + '</div></td>'
+      + '<td>' + esc(h.code || '') + (f ? ' <span class="code">' + esc(f) + '</span>' : '') + '<div class="meta">' + esc(h.list || '') + '</div></td>'
+      + '<td class="num" style="color:var(--faint)">' + (fmtVal(h.prev) !== '' ? esc(fmtVal(h.prev)) : '&mdash;') + '</td>'
+      + '<td class="num money">' + (fmtVal(h.next) !== '' ? esc(fmtVal(h.next)) : '&mdash;') + '</td></tr>';
+  }).join('') || '<tr><td colspan="4"><p class="note">No changes recorded yet.</p></td></tr>';
+  var v = el(
+    hdr(P.name, 'Change history &middot; Read only')
+    + '<table><thead><tr><th>When</th><th>Item</th><th class="num">Was</th><th class="num">Now</th></tr></thead>'
+    + '<tbody>' + rows + '</tbody></table>'
+    + '<p class="note">Full audit log (ARCHIVE) &mdash; newest first. This is where to spot a wrong entry, then roll back.</p>'
+  );
+  v.insertBefore(backBtn(scrMenu), v.firstChild);
+  render(v);
+}
 function scrRollback(){
   if (P.demo) { scrRollbackList((P.snapshots || []).map(function (s) { return { ts: s.date, label: s.label }; })); return; }
   SCREEN.innerHTML = '<div class="topbar flag"><div class="brand">ENKI &amp; GEDE BAGUS &middot; BALI</div><h1>Emergency rollback</h1><div class="sub">Loading versions&hellip;</div></div>';
