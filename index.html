@@ -235,8 +235,8 @@ function scrSummarySheet(){
     if (r.note) meta.push(esc(r.note));
     var si = m.map[idx];
     var nameHtml = (si >= 0)
-      ? '<span style="color:' + C_BLUE + ';font-weight:600">' + esc(r.name) + '</span>'
-      : '<span style="color:' + C_BLUE + '">' + esc(r.name) + '</span>';
+      ? '<span style="color:' + C_BLUE + '">' + esc(r.name) + '</span>'
+      : '<span style="color:var(--faint)">' + esc(r.name) + '</span>';
     return (si >= 0 ? '<tr class="rowlink" data-i="' + si + '">' : '<tr>')
       + '<td>' + (r.no ? '<span class="code">' + esc(r.no) + '</span> ' : '') + nameHtml
       + (meta.length ? '<div class="meta">' + meta.join(' &middot; ') + '</div>' : '') + '</td>'
