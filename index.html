@@ -183,7 +183,7 @@ function scrMenu(){
   var doneV = '<div class="v"' + (flag && gap < 0 ? ' style="color:var(--flag)"' : '') + '>' + rp(doneRp) + '</div>';
   var lightNote = flag ? '<p class="note" style="color:var(--flag)">&#9888; ' + (gap > 0 ? 'Paid ahead of done by ' + rp(gap) : 'Done ahead of paid by ' + rp(-gap)) + ' (' + gapPct + '%)</p>' : '';
   var v = el(
-    hdr(P.name, 'Bill of Quantities (read only)')
+    hdr(P.name, 'Project Report')
     + '<div class="kpi">'
     + '<div><div class="k">Budget</div><div class="v">' + rp(budget) + '</div></div>'
     + '<div><div class="k">Paid</div>' + paidV + '</div>'
@@ -217,7 +217,9 @@ function scrMenu(){
 }
 
 function scrSummarySheet(){
-  var rows = P.summaryRows.map(function (r) {
+  var m = matchSummaryToSheets();
+  var C_BLUE = '#2563eb';
+  var rows = P.summaryRows.map(function (r, idx) {
     if (r.k === 's') return '<tr><td colspan="2" style="font-weight:700;color:var(--ink);padding-top:16px">' + esc(r.name) + '</td></tr>';
     if (r.k === 't') {
       var tm = [];
@@ -231,17 +233,23 @@ function scrSummarySheet(){
     if (r.paid !== null && r.paid !== undefined) meta.push('paid ' + rp(r.paid));
     if (r.done !== null && r.done !== undefined) meta.push('done ' + rp(r.done));
     if (r.note) meta.push(esc(r.note));
-    return '<tr><td>' + (r.no ? '<span class="code">' + esc(r.no) + '</span> ' : '') + esc(r.name)
+    var si = m.map[idx];
+    var nameHtml = (si >= 0)
+      ? '<span style="color:' + C_BLUE + ';font-weight:600">' + esc(r.name) + '</span>'
+      : '<span style="color:' + C_BLUE + '">' + esc(r.name) + '</span>';
+    return (si >= 0 ? '<tr class="rowlink" data-i="' + si + '">' : '<tr>')
+      + '<td>' + (r.no ? '<span class="code">' + esc(r.no) + '</span> ' : '') + nameHtml
       + (meta.length ? '<div class="meta">' + meta.join(' &middot; ') + '</div>' : '') + '</td>'
       + '<td class="num money">' + (r.total !== null && r.total !== undefined ? rp(r.total) : '') + '</td></tr>';
   }).join('');
   var v = el(
-    hdr(P.name, 'Project summary &middot; Summary sheet &middot; Read only')
+    hdr(P.name, 'Project summary &middot; Read only')
     + '<table><thead><tr><th>Item</th><th class="num">Total</th></tr></thead>'
     + '<tbody>' + rows + '</tbody></table>'
     + '<div class="foot"><button class="pdfbtn">PDF</button><button class="pdfbtn anbtn">Analytics</button></div>'
   );
   v.insertBefore(backBtn(scrMenu), v.firstChild);
+  v.querySelectorAll('.rowlink').forEach(function (r) { r.onclick = function () { scrDetail(P.sections[+r.getAttribute('data-i')]); }; });
   v.querySelector('.pdfbtn:not(.anbtn)').onclick = function () { sendPdf(this); };
   v.querySelector('.anbtn').onclick = function () { scrAnalytics('summary'); };
   render(v);
