@@ -499,7 +499,36 @@ function scrEdit(s){
     pending.textContent = n ? n + ' changes pending' : '';
   }
   v.querySelectorAll('input').forEach(function (inp) { inp.oninput = refresh; });
-  confirm.onclick = function () { alert('DEMO: nothing is written. Live version: confirm → snapshot → ARCHIVE → cells → audit.'); };
+  confirm.onclick = function () {
+    var changes = [];
+    s.positions.forEach(function (p, i) {
+      var qi = v.querySelector('[data-q="' + i + '"]');
+      var pi = v.querySelector('[data-p="' + i + '"]');
+      var nq = (qi && qi.value !== '') ? +qi.value : null;
+      var np = (pi && pi.value !== '') ? +pi.value : null;
+      var ch = { code: p.code };
+      var hit = false;
+      if (nq !== null && nq !== p.qty) { ch.qty = nq; hit = true; }
+      if (np !== null && np !== p.price) { ch.price = np; hit = true; }
+      if (hit) changes.push(ch);
+    });
+    if (!changes.length) return;
+    if (P.demo) { alert('DEMO: nothing is written.'); return; }
+    confirm.disabled = true; confirm.textContent = 'Saving…';
+    api('app_smeta_edit', { price_changes: changes, dry_run: false }).then(function (j) {
+      if (!j || !j.ok) throw new Error((j && j.error) || 'error');
+      var msg = [];
+      if (j.count > 0) msg.push('✓ Saved ' + j.count + ' change(s) to the estimate.');
+      if (j.locked && j.locked.length) msg.push('🔒 Locked, not saved: ' + j.locked.join(', ') + '. Unlock the section on the summary sheet, then Refresh.');
+      if (j.missing && j.missing.length) msg.push('⚠ No cell mapping: ' + j.missing.join(', ') + '.');
+      try { if (WA && WA.HapticFeedback && j.count > 0) WA.HapticFeedback.notificationOccurred('success'); } catch (e) {}
+      alert(msg.join('\n') || 'Nothing changed.');
+      if (j.count > 0) { boot(); } else { confirm.disabled = false; confirm.textContent = 'Confirm changes'; refresh(); }
+    }).catch(function (e) {
+      alert('Save failed: ' + ((e && e.message) || e));
+      confirm.disabled = false; confirm.textContent = 'Confirm changes'; refresh();
+    });
+  };
   v.querySelectorAll('.pdfbtn')[0].onclick = function () { scrSections('edit'); };
   render(v);
 }
