@@ -555,7 +555,10 @@ function scrEdit(s){
       if (j.locked) { alert('🔒 Section is locked. Unlock it on the summary sheet, then Refresh.'); ab.disabled = false; ab.textContent = 'Add to section'; return; }
       if (j.applied) {
         try { if (WA && WA.HapticFeedback) WA.HapticFeedback.notificationOccurred('success'); } catch (e) {}
-        alert('✓ Added ' + (j.new_code || 'position') + ' to ' + s.name + '.'); boot(); return;
+        ab.textContent = 'Refreshing…';
+        api('app_map_refresh', {}).then(function () { alert('✓ Added ' + (j.new_code || 'position') + ' to ' + s.name + '. Map refreshed.'); boot(); })
+          .catch(function () { alert('✓ Added ' + (j.new_code || 'position') + '. Tap Refresh to see it.'); boot(); });
+        return;
       }
       alert('Could not add: ' + (j.error || 'write not completed yet') + '.'); ab.disabled = false; ab.textContent = 'Add to section';
     }).catch(function (e) { alert('Add failed: ' + ((e && e.message) || e)); ab.disabled = false; ab.textContent = 'Add to section'; });
