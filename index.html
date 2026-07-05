@@ -645,6 +645,12 @@ function scrRegister(){
 }
 function scrRegisterList(tasks){
   var remaining = tasks.length;
+  var mm = matchSummaryToSheets();
+  var openSections = [];
+  P.sections.forEach(function (s, si) { var locked = true; for (var ri = 0; ri < mm.map.length; ri++) { if (mm.map[ri] === si) { locked = (P.summaryRows[ri].lock !== false); break; } } if (!locked) openSections.push(s.name); });
+  var chipHtml = openSections.length
+    ? openSections.map(function (name) { return '<button class="secchip" data-name="' + esc(name) + '" style="padding:7px 11px;border:1px solid var(--hair);border-radius:16px;background:#fff;font-size:12px">' + esc(name) + '</button>'; }).join('')
+    : '<span class="note">No open sections — unlock one on the summary sheet, then Refresh.</span>';
   var v = el(hdr(P.name, 'Task Register &middot; sort tasks') + '<p class="note">Decide each task. Accounted / not-applicable just hide it; Add to BOQ creates a line.</p>');
   v.insertBefore(backBtn(function(){ scrSections('edit'); }), v.firstChild);
   var empty = document.createElement('p'); empty.className = 'note'; empty.textContent = 'All tasks sorted — nothing pending.'; empty.style.display = tasks.length ? 'none' : 'block';
@@ -652,7 +658,6 @@ function scrRegisterList(tasks){
   var bs = 'flex:1;padding:9px;border:1px solid var(--hair);border-radius:6px;background:#fff;font-size:12px';
   tasks.forEach(function (t) {
     var card = document.createElement('div'); card.className = 'card';
-    var secOpts = P.sections.map(function (s) { return '<div class="secopt" data-name="' + esc(s.name) + '" style="padding:9px 10px;border-bottom:1px solid var(--hair)">' + esc(s.name) + '</div>'; }).join('');
     card.innerHTML = '<div class="t">' + esc(t.estimate_name || t.task) + '</div>'
       + '<div class="m">' + esc(t.task) + (t.trello_column ? ' &middot; ' + esc(t.trello_column) : '') + '</div>'
       + '<div style="display:flex;gap:6px;margin-top:8px">'
@@ -660,9 +665,9 @@ function scrRegisterList(tasks){
       + '<button class="d-acc" style="' + bs + '">Already</button>'
       + '<button class="d-skip" style="' + bs + '">N/A</button>'
       + '</div>'
-      + '<div class="addform2" style="display:none;margin-top:8px">'
-      + '<button class="secpick" style="width:100%;text-align:left;padding:9px 10px;border:1px solid var(--hair);border-radius:6px;background:#fff;margin-bottom:6px">&mdash; choose section &mdash;</button>'
-      + '<div class="secopts" style="display:none;max-height:220px;overflow:auto;border:1px solid var(--hair);border-radius:6px;margin-bottom:6px">' + secOpts + '</div>'
+      + '<div class="addform2" style="display:none;margin-top:10px">'
+      + '<div class="m" style="margin-bottom:5px">Section (open only):</div>'
+      + '<div class="secchips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">' + chipHtml + '</div>'
       + '<div style="display:flex;gap:6px"><input class="rqty" type="number" inputmode="decimal" placeholder="Qty (0 ok)" style="flex:1"><input class="rprice" type="number" inputmode="numeric" placeholder="Price (0 ok)" style="flex:1"></div>'
       + '<button class="actbtn rgo" style="margin-top:8px;width:100%">Add to BOQ &amp; mark done</button>'
       + '</div>';
@@ -672,10 +677,12 @@ function scrRegisterList(tasks){
     card.querySelector('.d-acc').onclick = function(){ regDecide(t.card_id, { decision: 'accounted' }, done); };
     var form = card.querySelector('.addform2');
     card.querySelector('.d-add').onclick = function(){ form.style.display = (form.style.display === 'none') ? 'block' : 'none'; };
-    var pick = card.querySelector('.secpick'), opts = card.querySelector('.secopts');
-    pick.onclick = function(){ opts.style.display = (opts.style.display === 'none') ? 'block' : 'none'; };
-    card.querySelectorAll('.secopt').forEach(function (o) {
-      o.onclick = function(){ chosen = o.getAttribute('data-name'); pick.textContent = chosen; pick.style.color = 'var(--ink)'; opts.style.display = 'none'; };
+    card.querySelectorAll('.secchip').forEach(function (c) {
+      c.onclick = function(){
+        chosen = c.getAttribute('data-name');
+        card.querySelectorAll('.secchip').forEach(function (x) { x.style.borderColor = 'var(--hair)'; x.style.background = '#fff'; x.style.color = ''; x.style.fontWeight = '400'; });
+        c.style.borderColor = '#16314f'; c.style.background = '#eef2f7'; c.style.color = '#16314f'; c.style.fontWeight = '600';
+      };
     });
     card.querySelector('.rgo').onclick = function(){
       if (!chosen) { alert('Choose a section first.'); return; }
