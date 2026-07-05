@@ -375,9 +375,11 @@ function scrSections(mode){
     + '<table><thead><tr><th>Section</th><th class="num">' + (mode === 'sitecheck' ? '' : 'Total') + '</th></tr></thead>'
     + '<tbody>' + rows + totalRow + '</tbody></table>'
     + (mode === 'summary' ? '<div class="foot"><button class="pdfbtn">PDF</button><button class="pdfbtn anbtn">Analytics</button></div>'
-      : (mode === 'sitecheck' ? '<div class="foot"><span></span><button class="pdfbtn anbtn">Analytics</button></div>' : ''))
+      : (mode === 'sitecheck' ? '<div class="foot"><span></span><button class="pdfbtn anbtn">Analytics</button></div>'
+      : '<button class="btn regbtn" style="margin-top:10px">&#128203; Task Register</button>'))
   );
   v.insertBefore(backBtn(scrMenu), v.firstChild);
+  var rb = v.querySelector('.regbtn'); if (rb) rb.onclick = scrRegister;
   v.querySelectorAll('.rowlink').forEach(function (r) {
     r.onclick = function () {
       var s = P.sections[+r.getAttribute('data-i')];
@@ -618,6 +620,67 @@ function scrPayments(){
 function fmtTs(ts){ try { var d = new Date(ts); if (isNaN(d.getTime())) return String(ts); return d.toLocaleString(); } catch (e) { return String(ts); } }
 function askConfirm(msg, cb){ try { if (WA && WA.showConfirm) { WA.showConfirm(msg, cb); return; } } catch (e) {} cb(window.confirm(msg)); }
 function fmtVal(x){ var s = String(x == null ? '' : x); if (s !== '' && /^-?\d+(\.\d+)?$/.test(s)) return Number(s).toLocaleString('en-US'); return s; }
+function regDecide(cardId, payload, cb){
+  if (P.demo) { alert('DEMO: nothing is written.'); return; }
+  payload.card_id = cardId;
+  api('app_register_decide', payload).then(function (j) {
+    if (!j || !j.ok) throw new Error((j && j.error) || 'error');
+    try { if (WA && WA.HapticFeedback) WA.HapticFeedback.notificationOccurred('success'); } catch (e) {}
+    cb();
+  }).catch(function (e) { alert('Failed: ' + ((e && e.message) || e)); });
+}
+function scrRegister(){
+  if (P.demo) { scrRegisterList([]); return; }
+  SCREEN.innerHTML = '<div class="topbar"><div class="brand">ENKI &amp; GEDE BAGUS &middot; BALI</div><h1>Task Register</h1><div class="sub">Loading&hellip;</div></div>';
+  api('app_register_read', {}).then(function (j) { scrRegisterList((j && j.tasks) || []); })
+    .catch(function (e) { var v = el(hdr(P.name, 'Register failed') + '<p class="note">' + esc(String((e && e.message) || e)) + '</p>'); v.insertBefore(backBtn(function(){ scrSections('edit'); }), v.firstChild); render(v); });
+}
+function scrRegisterList(tasks){
+  var v = el(hdr(P.name, 'Task Register &middot; ' + tasks.length + ' to sort') + '<p class="note">Decide each task. Accounted / not-applicable just hide it; Add to BOQ creates a line.</p>');
+  v.insertBefore(backBtn(function(){ scrSections('edit'); }), v.firstChild);
+  if (!tasks.length) { var e0 = document.createElement('p'); e0.className = 'note'; e0.textContent = 'All tasks sorted — nothing pending.'; v.appendChild(e0); render(v); return; }
+  var bs = 'flex:1;padding:9px;border:1px solid var(--hair);border-radius:6px;background:#fff;font-size:12px';
+  tasks.forEach(function (t) {
+    var card = document.createElement('div'); card.className = 'card';
+    card.innerHTML = '<div class="t">' + esc(t.estimate_name || t.task) + '</div>'
+      + '<div class="m">' + esc(t.task) + (t.trello_column ? ' &middot; ' + esc(t.trello_column) : '') + '</div>'
+      + '<div style="display:flex;gap:6px;margin-top:8px">'
+      + '<button class="d-add" style="' + bs + ';color:var(--navy);font-weight:600">&#43; Add to BOQ</button>'
+      + '<button class="d-acc" style="' + bs + '">Already</button>'
+      + '<button class="d-skip" style="' + bs + '">N/A</button>'
+      + '</div>'
+      + '<div class="addform2" style="display:none;margin-top:8px">'
+      + '<select class="rsec" style="width:100%;margin-bottom:6px"></select>'
+      + '<div style="display:flex;gap:6px"><input class="rqty" type="number" inputmode="decimal" placeholder="Qty (0 ok)" style="flex:1"><input class="rprice" type="number" inputmode="numeric" placeholder="Price (0 ok)" style="flex:1"></div>'
+      + '<button class="actbtn rgo" style="margin-top:8px;width:100%">Add to BOQ &amp; mark done</button>'
+      + '</div>';
+    var sel = card.querySelector('.rsec');
+    sel.innerHTML = '<option value="">&mdash; choose section &mdash;</option>' + P.sections.map(function (s) { return '<option value="' + esc(s.name) + '">' + esc(s.name) + '</option>'; }).join('');
+    function done(){ card.style.opacity = '0.4'; card.querySelectorAll('button,select,input').forEach(function(x){ x.disabled = true; }); var b = document.createElement('div'); b.className = 'm'; b.style.marginTop = '6px'; b.textContent = '✓ done'; card.appendChild(b); }
+    card.querySelector('.d-skip').onclick = function(){ regDecide(t.card_id, { decision: 'skipped' }, done); };
+    card.querySelector('.d-acc').onclick = function(){ regDecide(t.card_id, { decision: 'accounted' }, done); };
+    var form = card.querySelector('.addform2');
+    card.querySelector('.d-add').onclick = function(){ form.style.display = (form.style.display === 'none') ? 'block' : 'none'; };
+    card.querySelector('.rgo').onclick = function(){
+      var section = sel.value; if (!section) { alert('Choose a section.'); return; }
+      var qv = card.querySelector('.rqty').value, pv = card.querySelector('.rprice').value;
+      var go = card.querySelector('.rgo'); go.disabled = true; go.textContent = 'Adding…';
+      var addP = { section: section, desc: (t.estimate_name || t.task), dry_run: false };
+      if (qv !== '') addP.qty = +qv;
+      if (pv !== '') addP.price = +pv;
+      api('app_smeta_add', addP).then(function (j) {
+        if (!j || !j.ok) throw new Error((j && j.error) || 'error');
+        if (j.locked) { alert('🔒 Section is locked. Unlock it, then Refresh.'); go.disabled = false; go.textContent = 'Add to BOQ & mark done'; return; }
+        if (!j.applied) { alert('Could not add: ' + (j.error || 'write not completed') + '.'); go.disabled = false; go.textContent = 'Add to BOQ & mark done'; return; }
+        api('app_register_decide', { card_id: t.card_id, decision: 'add', section: section, qty: addP.qty, price: addP.price }).then(function(){
+          api('app_map_refresh', {}).catch(function(){}).then(function(){ try { if (WA && WA.HapticFeedback) WA.HapticFeedback.notificationOccurred('success'); } catch (e) {} alert('✓ Added ' + (j.new_code || 'line') + ' to ' + section + ' and marked done.'); done(); });
+        });
+      }).catch(function (e) { alert('Add failed: ' + ((e && e.message) || e)); go.disabled = false; go.textContent = 'Add to BOQ & mark done'; });
+    };
+    v.appendChild(card);
+  });
+  render(v);
+}
 function scrHistory(){
   if (P.demo) { scrHistoryList([]); return; }
   SCREEN.innerHTML = '<div class="topbar"><div class="brand">ENKI &amp; GEDE BAGUS &middot; BALI</div><h1>Change history</h1><div class="sub">Loading&hellip;</div></div>';
