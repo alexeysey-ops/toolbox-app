@@ -193,7 +193,7 @@ function scrMenu(){
     + '<button class="btn primary" data-a="summary">Project summary</button>'
     + '<button class="btn" data-a="tasks" style="display:flex;justify-content:space-between"><span>Project tasks</span><span style="font-size:11px;color:var(--faint)">' + (P.tasks ? P.tasks.length + '' : '') + '</span></button>'
     + '<button class="btn" data-a="sitecheck">Site check</button>'
-    + '<button class="btn" data-a="edit">Edit prices and quantities</button>'
+    + '<button class="btn" data-a="edit">Update BOQ</button>'
     + '<button class="btn" data-a="payments">Payments (view)</button>'
     + '<button class="btn" data-a="refresh">&#128260; Refresh</button>'
     + '<hr class="sep">'
@@ -354,7 +354,7 @@ function scrSiteCheckList(){
 function scrSections(mode){
   if (mode === 'summary' && P.summaryRows && P.summaryRows.length) { scrSummarySheet(); return; }
   if (mode === 'sitecheck' && P.summaryRows && P.summaryRows.length) { scrSiteCheckList(); return; }
-  var titles = { summary: 'Project summary', sitecheck: 'Site check', edit: 'Edit prices and quantities' };
+  var titles = { summary: 'Project summary', sitecheck: 'Site check', edit: 'Update BOQ' };
   var subs = { summary: 'Read only', sitecheck: 'Select a section — no prices shown', edit: '<span style="color:var(--flag)">Edit mode</span>' };
   var rows = P.sections.map(function (s, i) {
     if (mode === 'sitecheck') {
@@ -478,6 +478,14 @@ function scrEdit(s){
     hdr(s.name, '<span style="color:var(--flag)">(edit)</span> qty &middot; unit price', true)
     + '<table><thead><tr><th>Position</th><th class="num">Qty</th><th class="num">Unit price</th></tr></thead>'
     + '<tbody>' + rows + '</tbody></table>'
+    + '<div class="addbox" style="margin-top:10px;border-top:1px solid var(--hair);padding-top:10px">'
+    + '<button class="btn addtoggle">&#43; Add position</button>'
+    + '<div class="addform" style="display:none;margin-top:8px">'
+    + '<input class="adesc" placeholder="Description" style="width:100%;margin-bottom:6px">'
+    + '<div style="display:flex;gap:6px"><input class="aqty" type="number" inputmode="decimal" placeholder="Qty (0 ok)" style="flex:1"><input class="aprice" type="number" inputmode="numeric" placeholder="Unit price (0 ok)" style="flex:1"></div>'
+    + '<button class="actbtn asave" style="margin-top:8px;width:100%">Add to section</button>'
+    + '<p class="note" style="margin-top:6px">New row goes to the end of this section. Total is a formula (qty &times; price).</p>'
+    + '</div></div>'
     + '<div class="foot"><span class="pending"></span>'
     + '<button class="pdfbtn" style="border-color:var(--muted);color:var(--muted)">Cancel</button>'
     + '<button class="actbtn" disabled>Confirm changes</button></div>'
@@ -530,6 +538,27 @@ function scrEdit(s){
       alert('Save failed: ' + ((e && e.message) || e));
       confirm.disabled = false; confirm.textContent = 'Confirm changes'; refresh();
     });
+  };
+  var addToggle = v.querySelector('.addtoggle'), addForm = v.querySelector('.addform');
+  addToggle.onclick = function () { addForm.style.display = (addForm.style.display === 'none') ? 'block' : 'none'; };
+  v.querySelector('.asave').onclick = function () {
+    var desc = (v.querySelector('.adesc').value || '').trim();
+    var qv = v.querySelector('.aqty').value, pv = v.querySelector('.aprice').value;
+    if (!desc) { alert('Enter a description.'); return; }
+    if (P.demo) { alert('DEMO: nothing is written.'); return; }
+    var payload = { section: s.name, desc: desc, dry_run: false };
+    if (qv !== '') payload.qty = +qv;
+    if (pv !== '') payload.price = +pv;
+    var ab = v.querySelector('.asave'); ab.disabled = true; ab.textContent = 'Adding…';
+    api('app_smeta_add', payload).then(function (j) {
+      if (!j || !j.ok) throw new Error((j && j.error) || 'error');
+      if (j.locked) { alert('🔒 Section is locked. Unlock it on the summary sheet, then Refresh.'); ab.disabled = false; ab.textContent = 'Add to section'; return; }
+      if (j.applied) {
+        try { if (WA && WA.HapticFeedback) WA.HapticFeedback.notificationOccurred('success'); } catch (e) {}
+        alert('✓ Added ' + (j.new_code || 'position') + ' to ' + s.name + '.'); boot(); return;
+      }
+      alert('Could not add: ' + (j.error || 'write not completed yet') + '.'); ab.disabled = false; ab.textContent = 'Add to section';
+    }).catch(function (e) { alert('Add failed: ' + ((e && e.message) || e)); ab.disabled = false; ab.textContent = 'Add to section'; });
   };
   v.querySelectorAll('.pdfbtn')[0].onclick = function () { scrSections('edit'); };
   render(v);
