@@ -644,12 +644,15 @@ function scrRegister(){
     .catch(function (e) { var v = el(hdr(P.name, 'Register failed') + '<p class="note">' + esc(String((e && e.message) || e)) + '</p>'); v.insertBefore(backBtn(function(){ scrSections('edit'); }), v.firstChild); render(v); });
 }
 function scrRegisterList(tasks){
-  var v = el(hdr(P.name, 'Task Register &middot; ' + tasks.length + ' to sort') + '<p class="note">Decide each task. Accounted / not-applicable just hide it; Add to BOQ creates a line.</p>');
+  var remaining = tasks.length;
+  var v = el(hdr(P.name, 'Task Register &middot; sort tasks') + '<p class="note">Decide each task. Accounted / not-applicable just hide it; Add to BOQ creates a line.</p>');
   v.insertBefore(backBtn(function(){ scrSections('edit'); }), v.firstChild);
-  if (!tasks.length) { var e0 = document.createElement('p'); e0.className = 'note'; e0.textContent = 'All tasks sorted — nothing pending.'; v.appendChild(e0); render(v); return; }
+  var empty = document.createElement('p'); empty.className = 'note'; empty.textContent = 'All tasks sorted — nothing pending.'; empty.style.display = tasks.length ? 'none' : 'block';
+  v.appendChild(empty);
   var bs = 'flex:1;padding:9px;border:1px solid var(--hair);border-radius:6px;background:#fff;font-size:12px';
   tasks.forEach(function (t) {
     var card = document.createElement('div'); card.className = 'card';
+    var secOpts = P.sections.map(function (s) { return '<div class="secopt" data-name="' + esc(s.name) + '" style="padding:9px 10px;border-bottom:1px solid var(--hair)">' + esc(s.name) + '</div>'; }).join('');
     card.innerHTML = '<div class="t">' + esc(t.estimate_name || t.task) + '</div>'
       + '<div class="m">' + esc(t.task) + (t.trello_column ? ' &middot; ' + esc(t.trello_column) : '') + '</div>'
       + '<div style="display:flex;gap:6px;margin-top:8px">'
@@ -658,30 +661,36 @@ function scrRegisterList(tasks){
       + '<button class="d-skip" style="' + bs + '">N/A</button>'
       + '</div>'
       + '<div class="addform2" style="display:none;margin-top:8px">'
-      + '<select class="rsec" style="width:100%;margin-bottom:6px"></select>'
+      + '<button class="secpick" style="width:100%;text-align:left;padding:9px 10px;border:1px solid var(--hair);border-radius:6px;background:#fff;margin-bottom:6px">&mdash; choose section &mdash;</button>'
+      + '<div class="secopts" style="display:none;max-height:220px;overflow:auto;border:1px solid var(--hair);border-radius:6px;margin-bottom:6px">' + secOpts + '</div>'
       + '<div style="display:flex;gap:6px"><input class="rqty" type="number" inputmode="decimal" placeholder="Qty (0 ok)" style="flex:1"><input class="rprice" type="number" inputmode="numeric" placeholder="Price (0 ok)" style="flex:1"></div>'
       + '<button class="actbtn rgo" style="margin-top:8px;width:100%">Add to BOQ &amp; mark done</button>'
       + '</div>';
-    var sel = card.querySelector('.rsec');
-    sel.innerHTML = '<option value="">&mdash; choose section &mdash;</option>' + P.sections.map(function (s) { return '<option value="' + esc(s.name) + '">' + esc(s.name) + '</option>'; }).join('');
-    function done(){ card.style.opacity = '0.4'; card.querySelectorAll('button,select,input').forEach(function(x){ x.disabled = true; }); var b = document.createElement('div'); b.className = 'm'; b.style.marginTop = '6px'; b.textContent = '✓ done'; card.appendChild(b); }
+    var chosen = '';
+    function done(){ card.remove(); remaining--; if (remaining <= 0) empty.style.display = 'block'; }
     card.querySelector('.d-skip').onclick = function(){ regDecide(t.card_id, { decision: 'skipped' }, done); };
     card.querySelector('.d-acc').onclick = function(){ regDecide(t.card_id, { decision: 'accounted' }, done); };
     var form = card.querySelector('.addform2');
     card.querySelector('.d-add').onclick = function(){ form.style.display = (form.style.display === 'none') ? 'block' : 'none'; };
+    var pick = card.querySelector('.secpick'), opts = card.querySelector('.secopts');
+    pick.onclick = function(){ opts.style.display = (opts.style.display === 'none') ? 'block' : 'none'; };
+    card.querySelectorAll('.secopt').forEach(function (o) {
+      o.onclick = function(){ chosen = o.getAttribute('data-name'); pick.textContent = chosen; pick.style.color = 'var(--ink)'; opts.style.display = 'none'; };
+    });
     card.querySelector('.rgo').onclick = function(){
-      var section = sel.value; if (!section) { alert('Choose a section.'); return; }
+      if (!chosen) { alert('Choose a section first.'); return; }
       var qv = card.querySelector('.rqty').value, pv = card.querySelector('.rprice').value;
       var go = card.querySelector('.rgo'); go.disabled = true; go.textContent = 'Adding…';
-      var addP = { section: section, desc: (t.estimate_name || t.task), dry_run: false };
+      var addP = { section: chosen, desc: (t.estimate_name || t.task), dry_run: false };
       if (qv !== '') addP.qty = +qv;
       if (pv !== '') addP.price = +pv;
       api('app_smeta_add', addP).then(function (j) {
         if (!j || !j.ok) throw new Error((j && j.error) || 'error');
         if (j.locked) { alert('🔒 Section is locked. Unlock it, then Refresh.'); go.disabled = false; go.textContent = 'Add to BOQ & mark done'; return; }
         if (!j.applied) { alert('Could not add: ' + (j.error || 'write not completed') + '.'); go.disabled = false; go.textContent = 'Add to BOQ & mark done'; return; }
-        api('app_register_decide', { card_id: t.card_id, decision: 'add', section: section, qty: addP.qty, price: addP.price }).then(function(){
-          api('app_map_refresh', {}).catch(function(){}).then(function(){ try { if (WA && WA.HapticFeedback) WA.HapticFeedback.notificationOccurred('success'); } catch (e) {} alert('✓ Added ' + (j.new_code || 'line') + ' to ' + section + ' and marked done.'); done(); });
+        go.textContent = 'Refreshing…';
+        api('app_register_decide', { card_id: t.card_id, decision: 'add', section: chosen, qty: addP.qty, price: addP.price }).then(function(){
+          api('app_map_refresh', {}).catch(function(){}).then(function(){ try { if (WA && WA.HapticFeedback) WA.HapticFeedback.notificationOccurred('success'); } catch (e) {} alert('✓ Added ' + (j.new_code || 'line') + ' to ' + chosen + '.'); done(); });
         });
       }).catch(function (e) { alert('Add failed: ' + ((e && e.message) || e)); go.disabled = false; go.textContent = 'Add to BOQ & mark done'; });
     };
