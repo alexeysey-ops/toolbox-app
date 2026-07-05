@@ -218,7 +218,7 @@ function scrMenu(){
 
 function scrSummarySheet(){
   var m = matchSummaryToSheets();
-  var C_BLUE = '#2563eb';
+  var C_BLUE = '#16314f';
   var rows = P.summaryRows.map(function (r, idx) {
     if (r.k === 's') return '<tr><td colspan="2" style="font-weight:700;color:var(--ink);padding-top:16px">' + esc(r.name) + '</td></tr>';
     if (r.k === 't') {
@@ -280,7 +280,7 @@ function matchSummaryToSheets(){
 function scrSiteCheckList(){
   var m = matchSummaryToSheets();
   function dotc(color){ return '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + color + ';margin-right:7px;vertical-align:1px"></span>'; }
-  var C_GREEN = '#16a34a', C_GREY = 'var(--faint)', C_BLUE = '#2563eb';
+  var C_GREEN = '#16a34a', C_GREY = 'var(--faint)', C_BLUE = '#16314f';
   function nm(txt, hasSheet){ return '<span style="color:' + (hasSheet ? C_BLUE : 'var(--faint)') + '">' + esc(txt) + '</span>'; }
   var rows = P.summaryRows.map(function (r, idx) {
     if (r.k === 't') return '';
@@ -309,7 +309,7 @@ function scrSiteCheckList(){
   }).join('');
   if (extraRows) extraRows = '<tr><td colspan="2" style="font-weight:700;color:var(--ink);padding-top:16px">SHEETS NOT ON SUMMARY PAGE</td></tr>' + extraRows;
   var v = el(
-    hdr(P.name, 'Site check &middot; ' + dotc(C_GREEN) + 'open &nbsp;' + dotc(C_GREY) + 'locked &middot; <span style="color:' + C_BLUE + '">blue</span> = tap to open')
+    hdr(P.name, 'Site check &middot; ' + dotc(C_GREEN) + 'open &nbsp;' + dotc(C_GREY) + 'locked &middot; <span style="color:' + C_BLUE + '">navy</span> = tap to open')
     + '<table><thead><tr><th>Section</th><th class="num">New %</th></tr></thead>'
     + '<tbody>' + rows + extraRows + '</tbody></table>'
     + '<div class="foot"><button class="actbtn" disabled>Save % &rarr; Works Done</button><button class="pdfbtn anbtn">Analytics</button></div>'
