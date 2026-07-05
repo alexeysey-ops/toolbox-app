@@ -688,7 +688,7 @@ function scrRegisterList(tasks){
       if (!chosen) { alert('Choose a section first.'); return; }
       var qv = card.querySelector('.rqty').value, pv = card.querySelector('.rprice').value;
       var go = card.querySelector('.rgo'); go.disabled = true; go.textContent = 'Adding…';
-      var addP = { section: chosen, desc: (t.estimate_name || t.task), dry_run: false };
+      var addP = { section: chosen, desc: String(t.estimate_name || t.task).split(' / ')[0].trim(), dry_run: false };
       if (qv !== '') addP.qty = +qv;
       if (pv !== '') addP.price = +pv;
       api('app_smeta_add', addP).then(function (j) {
