@@ -175,9 +175,9 @@ function scrMenu(){
   P.sections.forEach(function (s) { doneRp += s.doneRp; total += s.total; });
   if (P.doneRpTotal !== null && P.doneRpTotal !== undefined) doneRp = P.doneRpTotal;
   var budget = P.budget || 0, paid = P.paid || 0;
-  var gap = paid - doneRp;
+  var gap = (P.budget_gap !== undefined && P.budget_gap !== null) ? P.budget_gap : (paid - doneRp);
   var big = Math.max(paid, doneRp, 1);
-  var flag = Math.abs(gap) >= 250000000;
+  var flag = !!P.budget_flagged;
   var gapPct = Math.round(Math.abs(gap) / big * 100);
   var paidV = '<div class="v"' + (flag && gap > 0 ? ' style="color:var(--flag)"' : '') + '>' + rp(paid) + '</div>';
   var doneV = '<div class="v"' + (flag && gap < 0 ? ' style="color:var(--flag)"' : '') + '>' + rp(doneRp) + '</div>';
@@ -929,6 +929,7 @@ function scrAnalytics(context){
 var API_URL = 'https://alfred-mishkin.app.n8n.cloud/webhook/app-api';
 function applySmeta(j){
   P.budget = j.budget; P.paid = j.paid;
+  P.budget_flagged = j.budget_flagged; P.budget_gap = j.budget_gap;
   P.summaryRows = j.summary_rows || null;
   P.doneRpTotal = (j.done_rp === undefined) ? null : j.done_rp;
   P.sections = (j.sections || []).map(function (s) {
