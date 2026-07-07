@@ -498,10 +498,10 @@ function scrEdit(s){
     + '</div></div>'
     + '<div class="foot"><span class="pending"></span>'
     + '<button class="pdfbtn" style="border-color:var(--muted);color:var(--muted)">Cancel</button>'
-    + '<button class="actbtn" disabled>Confirm changes</button></div>'
+    + '<button class="actbtn confirmbtn" disabled>Confirm changes</button></div>'
   );
   v.insertBefore(backBtn(function () { scrSections('edit'); }), v.firstChild);
-  var confirm = v.querySelector('.actbtn'), pending = v.querySelector('.pending');
+  var confirm = v.querySelector('.confirmbtn'), pending = v.querySelector('.pending');
   function refresh(){
     var n = 0;
     v.querySelectorAll('input').forEach(function (inp) {
